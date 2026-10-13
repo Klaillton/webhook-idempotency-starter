@@ -1,4 +1,4 @@
-package io.github.klaillton.sample.app.smoke;
+package io.github.klaillton.sampleapp;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
