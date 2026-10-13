@@ -1,4 +1,4 @@
-package io.github.klaillton;
+package io.github.klaillton.starter;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import static org.springframework.boot.SpringApplication.run;
 
