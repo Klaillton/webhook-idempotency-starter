@@ -1,21 +1,26 @@
-# Holes review — S1 skeleton
+# Holes review: S1 skeleton
 
-## Scope
+## Âmbito
 
-(1 frase: o que este PR entrega e o que ainda NÃO faz)
+O que este PR entrega: módulos core, starter, sample-app, CODEOWNERS e a adoção do gauntlet.
 
-## Known holes
+## Buracos conhecidos
 
-- (o que falta e em que semana entra: openapi.yaml, Postgres/Flyway/Testcontainers, ArchUnit, e2e)
+- Ainda não há openapi.yaml com contrato real (chega no S4).
+- Não há Postgres, Flyway nem Testcontainers.
+- Não há ArchUnit.
+- Os testes são só smoke, sem e2e.
 
-## Not covered by tests
+## Não coberto por testes
 
-- (o que os smoke tests NÃO provam)
+- O arranque do contexto Spring em cada módulo.
 
-## Risks / decisions
+## Riscos e decisões
 
-- (o que está feito de forma provisória e porquê)
+- Há @SpringBootApplication nas bibliotecas: o core não devia ter, e o starter deve usar @AutoConfiguration.
+- O package do smoke test (`sample.app`) não bate com o do main (`sampleapp`).
+- O nome do artefacto (-parent ou webhook-idempotency-spring-boot-starter) ainda está por fechar.
 
-## Next step
+## Próximo passo
 
-- (o buraco que fechas primeiro, e quando)
+O que o ROADMAP marca para a semana seguinte.
