@@ -6,21 +6,25 @@ O que este PR entrega: módulos core, starter, sample-app, CODEOWNERS e a adoç�
 
 ## Buracos conhecidos
 
-- Ainda não há openapi.yaml com contrato real (chega no S4).
+- Ainda não há openapi.yaml com contrato real
 - Não há Postgres, Flyway nem Testcontainers.
 - Não há ArchUnit.
 - Os testes são só smoke, sem e2e.
 
 ## Não coberto por testes
 
-- O arranque do contexto Spring em cada módulo.
+- Contexto Spring startup de sample-app (core and starter não tem contexto Spring)
 
-## Riscos e decisões
+## Decisões tomadas
 
-- Há @SpringBootApplication nas bibliotecas: o core não devia ter, e o starter deve usar @AutoConfiguration.
-- O package do smoke test (`sample.app`) não bate com o do main (`sampleapp`).
-- O nome do artefacto (-parent ou webhook-idempotency-spring-boot-starter) ainda está por fechar.
+- Core não tem Spring dependency ou classe main; Apenas sample-app tem @SpringBootApplication. Porquê: Bibliotecas não fazem boot, a app host sim.
+- O nome do artefacto parent é -parent porque é um pom agregador e não é publicado como dependência. O artefacto que os clientes vão usar é o webhook-idempotency-spring-boot-starter.
+- Alinhamento do package com a convenção no sample-app e tests. O @SpringBootTest procura a configuração subindo pelos packages
 
 ## Próximo passo
 
-O que o ROADMAP marca para a semana seguinte.
+"Planejado para (Qui/Sex) S1"
+
+- Contrato do openapi.yaml
+- Núcleo de idempotency no Postgres/Flyway com Testcontainers test
+- ArchUnit rule core ->/Spring
