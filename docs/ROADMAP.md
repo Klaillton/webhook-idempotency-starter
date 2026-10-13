@@ -8,7 +8,8 @@
 - `pom.xml` parent + módulos `core`, `starter`, `sample-app`, `e2e`.
 - `openapi/openapi.yaml` (intake + health) e `features/` iniciais — **protegidos desde S1**.
 - Gates L0 no `pr-gate.yml`: build, protect-specs, deps-lock, secrets-scan (gitleaks), openapi-diff, D13, ArchUnit.
-- **Saída:** contrato fechado e gate a correr.
+- **Saída:** S1 fecha com o PR #1 (esqueleto + adopt do gauntlet), ruleset aplicado com `policy-base` como check required, e `openapi/openapi.yaml` commitado e protegido.
+- **Dependência:** openapi-diff + D13 passam a obrigatórios quando sair o ADD-POLY S4 do ai-code-gauntlet.
 
 ## S2 — Núcleo de idempotência + HMAC
 - HMAC por source **antes** da idempotência; rotação de segredos; tolerância de timestamp; limite de body.
@@ -24,6 +25,7 @@
 - Fail-closed: arranque falhado / Docker ausente / 0 cenários → FAIL.
 - **Sem simulador.**
 - **Saída:** e2e obrigatório no PR gate.
+- **Dependência:** o e2e Cucumber depende do ADD-POLY S4 do ai-code-gauntlet; se o S4 não estiver pronto, a S3 escorrega.
 
 ## S4 — Retenção e acabamento
 - TTL por source (default 7 dias), retenção/limite de `response_body`, job de limpeza.
