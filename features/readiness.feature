@@ -9,7 +9,8 @@ Feature: Readiness
   Scenario: a ready process reports up
     Given the sample application has finished starting
     When a probe checks readiness
-    Then the probe reports status UP
+    Then the probe receives HTTP 200
+    And the probe reports status UP
 
   @op:getHealth @unhappy
   Scenario: a process that is not ready reports down
