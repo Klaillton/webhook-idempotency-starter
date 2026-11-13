@@ -201,10 +201,7 @@ public final class StripeEventId {
             if (eat('.') && !eatDigits()) {
                 return false;
             }
-            if ((eat('e') || eat('E')) && !eatExponent()) {
-                return false;
-            }
-            return true;
+            return !(eat('e') || eat('E')) || eatExponent();
         }
 
         private boolean eatExponent() {
@@ -246,11 +243,12 @@ public final class StripeEventId {
                 return null;
             }
             var hex = HexBytes.decode(text.substring(index, index + 4));
-            if (hex == null || hex.length != 2) {
+            if (hex.isEmpty() || hex.get().length != 2) {
                 return null;
             }
             index += 4;
-            var code = ((hex[0] & 0xff) << 8) | (hex[1] & 0xff);
+            var decoded = hex.get();
+            var code = ((decoded[0] & 0xff) << 8) | (decoded[1] & 0xff);
             return Character.toString((char) code);
         }
     }

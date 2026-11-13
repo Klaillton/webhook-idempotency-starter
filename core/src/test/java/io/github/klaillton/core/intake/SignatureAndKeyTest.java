@@ -2,6 +2,7 @@ package io.github.klaillton.core.intake;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -59,6 +60,6 @@ class SignatureAndKeyTest {
     @Test
     void shouldHashRawBytes() {
         assertEquals(64, Fingerprint.sha256Hex(BODY).length());
-        assertFalse(Fingerprint.sha256Hex(BODY).equals(Fingerprint.sha256Hex(new byte[] {1})));
+        assertNotEquals(Fingerprint.sha256Hex(BODY), Fingerprint.sha256Hex(new byte[] {1}));
     }
 }

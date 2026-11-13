@@ -63,10 +63,7 @@ public final class StripeSignature {
             if ("t".equals(pair[0])) {
                 timestamp = parseTimestamp(pair[1]);
             } else if ("v1".equals(pair[0])) {
-                var decoded = HexBytes.decode(pair[1]);
-                if (decoded != null) {
-                    signatures.add(decoded);
-                }
+                HexBytes.decode(pair[1]).ifPresent(signatures::add);
             }
         }
         if (timestamp == null || signatures.isEmpty()) {

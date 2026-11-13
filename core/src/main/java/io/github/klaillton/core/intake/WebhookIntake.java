@@ -70,18 +70,18 @@ public final class WebhookIntake {
     }
 
     private IntakeDecision decideExisting(
-            IntakeCommand command, WebhookHandler handler, String fingerprint, IdempotencyRecord record) {
-        if (record.status() == IdempotencyRecord.Status.COMPLETED) {
-            if (record.fingerprint().equals(fingerprint)) {
-                return new IntakeDecision.Completed(record.responseBody(), true);
+            IntakeCommand command, WebhookHandler handler, String fingerprint, IdempotencyRecord existing) {
+        if (existing.status() == IdempotencyRecord.Status.COMPLETED) {
+            if (existing.fingerprint().equals(fingerprint)) {
+                return new IntakeDecision.Completed(existing.responseBody(), true);
             }
             return new IntakeDecision.Rejected(IntakeDecision.Reason.FINGERPRINT);
         }
-        if (clock.instant().isBefore(record.lockedUntil())) {
-            return new IntakeDecision.InProgress(wholeSecondsUntil(clock.instant(), record.lockedUntil()));
+        if (clock.instant().isBefore(existing.lockedUntil())) {
+            return new IntakeDecision.InProgress(wholeSecondsUntil(clock.instant(), existing.lockedUntil()));
         }
         var newLock = clock.instant().plus(command.lease());
-        if (!store.takeover(command.source(), command.key(), fingerprint, record.lockedUntil(), newLock)) {
+        if (!store.takeover(command.source(), command.key(), fingerprint, existing.lockedUntil(), newLock)) {
             return null;
         }
         return runHandler(command, handler, fingerprint, newLock);

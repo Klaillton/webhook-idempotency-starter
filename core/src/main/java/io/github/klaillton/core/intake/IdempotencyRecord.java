@@ -35,19 +35,43 @@ public record IdempotencyRecord(
 
     @Override
     public boolean equals(Object other) {
-        if (!(other instanceof IdempotencyRecord record)) {
+        if (!(other instanceof IdempotencyRecord(
+                String otherSource,
+                String otherKey,
+                String otherFingerprint,
+                Status otherStatus,
+                Instant otherLockedUntil,
+                byte[] otherResponse))) {
             return false;
         }
-        return source.equals(record.source)
-                && key.equals(record.key)
-                && fingerprint.equals(record.fingerprint)
-                && status == record.status
-                && lockedUntil.equals(record.lockedUntil)
-                && Arrays.equals(responseBody, record.responseBody);
+        return source.equals(otherSource)
+                && key.equals(otherKey)
+                && fingerprint.equals(otherFingerprint)
+                && status == otherStatus
+                && lockedUntil.equals(otherLockedUntil)
+                && Arrays.equals(responseBody, otherResponse);
     }
 
     @Override
     public int hashCode() {
         return java.util.Objects.hash(source, key, fingerprint, status, lockedUntil, Arrays.hashCode(responseBody));
+    }
+
+    @Override
+    public String toString() {
+        var responseLength = responseBody == null ? 0 : responseBody.length;
+        return "IdempotencyRecord[source="
+                + source
+                + ", key="
+                + key
+                + ", fingerprint="
+                + fingerprint
+                + ", status="
+                + status
+                + ", lockedUntil="
+                + lockedUntil
+                + ", responseLength="
+                + responseLength
+                + "]";
     }
 }

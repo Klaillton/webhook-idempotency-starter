@@ -145,9 +145,12 @@ class WebhookIntakeTest {
 
     @Test
     void shouldDeleteRowWhenHandlerFails() {
-        assertThrows(IllegalStateException.class, () -> intake.receive(command(body("{}"), "delivery-1001", github(body("{}"))), event -> {
+        var delivery = command(body("{}"), "delivery-1001", github(body("{}")));
+        WebhookHandler handler = event -> {
             throw new IllegalStateException("boom");
-        }));
+        };
+
+        assertThrows(IllegalStateException.class, () -> intake.receive(delivery, handler));
 
         assertTrue(store.find("github", "delivery-1001").isEmpty());
     }
@@ -171,14 +174,15 @@ class WebhookIntakeTest {
 
     @Test
     void shouldKeepSuccessorLeaseWhenHandlerFailsAfterTakeover() {
-        assertThrows(IllegalStateException.class, () -> intake.receive(
-                command(body("{}"), "delivery-1001", github(body("{}"))),
-                event -> {
-                    var row = store.find("github", "delivery-1001").orElseThrow();
-                    var successor = NOW.plus(Duration.ofMinutes(5));
-                    assertTrue(store.takeover("github", "delivery-1001", "other", row.lockedUntil(), successor));
-                    throw new IllegalStateException("boom");
-                }));
+        var delivery = command(body("{}"), "delivery-1001", github(body("{}")));
+        WebhookHandler handler = event -> {
+            var row = store.find("github", "delivery-1001").orElseThrow();
+            var successor = NOW.plus(Duration.ofMinutes(5));
+            assertTrue(store.takeover("github", "delivery-1001", "other", row.lockedUntil(), successor));
+            throw new IllegalStateException("boom");
+        };
+
+        assertThrows(IllegalStateException.class, () -> intake.receive(delivery, handler));
 
         var kept = store.find("github", "delivery-1001").orElseThrow();
         assertEquals(IdempotencyRecord.Status.IN_PROGRESS, kept.status());
@@ -188,14 +192,15 @@ class WebhookIntakeTest {
 
     @Test
     void shouldLeaveSuccessorLeaseWhenCompletionLosesTheRace() {
-        assertThrows(IllegalStateException.class, () -> intake.receive(
-                command(body("{}"), "delivery-1001", github(body("{}"))),
-                event -> {
-                    var row = store.find("github", "delivery-1001").orElseThrow();
-                    assertTrue(store.takeover(
-                            "github", "delivery-1001", "other", row.lockedUntil(), NOW.plus(Duration.ofMinutes(5))));
-                    return new WebhookResult(RESULT);
-                }));
+        var delivery = command(body("{}"), "delivery-1001", github(body("{}")));
+        WebhookHandler handler = event -> {
+            var row = store.find("github", "delivery-1001").orElseThrow();
+            assertTrue(store.takeover(
+                    "github", "delivery-1001", "other", row.lockedUntil(), NOW.plus(Duration.ofMinutes(5))));
+            return new WebhookResult(RESULT);
+        };
+
+        assertThrows(IllegalStateException.class, () -> intake.receive(delivery, handler));
 
         var kept = store.find("github", "delivery-1001").orElseThrow();
         assertEquals(IdempotencyRecord.Status.IN_PROGRESS, kept.status());

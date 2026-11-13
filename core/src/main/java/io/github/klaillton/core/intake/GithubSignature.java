@@ -13,13 +13,13 @@ public final class GithubSignature {
             return false;
         }
         var provided = HexBytes.decode(header.substring("sha256=".length()));
-        if (provided == null) {
+        if (provided.isEmpty()) {
             return false;
         }
         var matched = false;
         for (var secret : secrets) {
             if (secret.activeAt(now)) {
-                matched |= HmacSha256.matches(secret.key(), body, provided);
+                matched |= HmacSha256.matches(secret.key(), body, provided.get());
             }
         }
         return matched;

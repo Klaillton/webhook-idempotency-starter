@@ -19,6 +19,23 @@ public sealed interface IntakeDecision
         public byte[] body() {
             return body.clone();
         }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof Completed(byte[] otherBody, boolean otherReplay)
+                    && Arrays.equals(body, otherBody)
+                    && replay == otherReplay;
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Arrays.hashCode(body) + Boolean.hashCode(replay);
+        }
+
+        @Override
+        public String toString() {
+            return "Completed[bodyLength=" + body.length + ", replay=" + replay + "]";
+        }
     }
 
     record Rejected(Reason reason) implements IntakeDecision {}
@@ -36,7 +53,7 @@ public sealed interface IntakeDecision
     static OptionalInt httpStatus(IntakeDecision decision) {
         return switch (decision) {
             case Completed ignored -> OptionalInt.of(200);
-            case Rejected rejected -> OptionalInt.of(status(rejected.reason()));
+            case Rejected(var reason) -> OptionalInt.of(status(reason));
             case InProgress ignored -> OptionalInt.of(409);
             case MissingKey ignored -> OptionalInt.empty();
         };

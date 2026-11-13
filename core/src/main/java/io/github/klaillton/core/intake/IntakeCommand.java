@@ -1,6 +1,7 @@
 package io.github.klaillton.core.intake;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -41,5 +42,61 @@ public record IntakeCommand(
     @Override
     public byte[] body() {
         return body.clone();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (!(other instanceof IntakeCommand(
+                String otherSource,
+                String otherKey,
+                byte[] otherBody,
+                int otherLimit,
+                SignatureScheme otherScheme,
+                String otherHeader,
+                List<SigningSecret> otherSecrets,
+                Duration otherTolerance,
+                Duration otherLease))) {
+            return false;
+        }
+        return source.equals(otherSource)
+                && Objects.equals(key, otherKey)
+                && Arrays.equals(body, otherBody)
+                && bodyLimitBytes == otherLimit
+                && scheme == otherScheme
+                && Objects.equals(signatureHeader, otherHeader)
+                && secrets.equals(otherSecrets)
+                && Objects.equals(timestampTolerance, otherTolerance)
+                && lease.equals(otherLease);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                source,
+                key,
+                Arrays.hashCode(body),
+                bodyLimitBytes,
+                scheme,
+                signatureHeader,
+                secrets,
+                timestampTolerance,
+                lease);
+    }
+
+    @Override
+    public String toString() {
+        return "IntakeCommand[source="
+                + source
+                + ", key="
+                + key
+                + ", bodyLength="
+                + body.length
+                + ", bodyLimitBytes="
+                + bodyLimitBytes
+                + ", scheme="
+                + scheme
+                + ", lease="
+                + lease
+                + "]";
     }
 }

@@ -21,14 +21,19 @@ public record SigningSecret(byte[] key, Instant expiresAt) {
 
     @Override
     public boolean equals(Object other) {
-        if (!(other instanceof SigningSecret secret)) {
+        if (!(other instanceof SigningSecret(byte[] otherKey, Instant otherExpiresAt))) {
             return false;
         }
-        return Arrays.equals(key, secret.key) && java.util.Objects.equals(expiresAt, secret.expiresAt);
+        return Arrays.equals(key, otherKey) && java.util.Objects.equals(expiresAt, otherExpiresAt);
     }
 
     @Override
     public int hashCode() {
         return 31 * Arrays.hashCode(key) + java.util.Objects.hashCode(expiresAt);
+    }
+
+    @Override
+    public String toString() {
+        return "SigningSecret[keyLength=" + key.length + ", expiresAt=" + expiresAt + "]";
     }
 }
