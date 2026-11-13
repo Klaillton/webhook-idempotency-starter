@@ -1,0 +1,160 @@
+openapi: 3.0.3
+info:
+  title: Webhook idempotency intake
+  version: 0.1.0
+  description: |
+    HTTP contract for the Spring Boot starter intake (v0.1).
+    The starter verifies the source signature before it touches idempotency.
+    A completed delivery with the same raw-body fingerprint is replayed
+    with the stored handler result. Admin routes and asynchronous 202
+    responses are out of scope for this version.
+paths:
+  /webhooks/{source}:
+    post:
+      operationId: ingestWebhook
+      summary: Accept one webhook and apply exactly-once handling
+      description: |
+        The fingerprint is SHA-256 of the raw request bytes, taken before
+        any parse. Which header carries the signature, and which header or
+        field carries the idempotency key, depends on the source.
+        This operation does not define the response when the configured
+        extractor finds no idempotency key.
+      parameters:
+        - $ref: "#/components/parameters/Source"
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/GithubDelivery"
+        - $ref: "#/components/parameters/GithubSignature"
+        - $ref: "#/components/parameters/StripeSignature"
+      requestBody:
+        required: true
+        description: Raw provider body. The fingerprint covers these bytes.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookPayload"
+      responses:
+        "200":
+          description: |
+            Handler result for this delivery, or the stored result when the
+            same source, key, and raw-body fingerprint already completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HandlerResult"
+        "401":
+          description: |
+            The signature or the timestamp check failed. Idempotency was
+            not evaluated.
+        "409":
+          description: |
+            This source and key are in progress and the lease is still valid.
+          headers:
+            Retry-After:
+              description: Whole seconds until the current lease ends.
+              schema:
+                type: integer
+                minimum: 0
+              required: true
+        "413":
+          description: |
+            The raw body exceeds the size limit configured for the source.
+            The default limit is 1 MiB.
+        "422":
+          description: |
+            This source and key already completed with a different raw-body
+            fingerprint.
+  /actuator/health:
+    get:
+      operationId: getHealth
+      summary: Readiness probe for the sample application
+      description: |
+        Spring Boot Actuator health. Testcontainers waits on HTTP 200
+        before sending webhooks to the sample application.
+      responses:
+        "200":
+          description: The process is ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthUp"
+        "503":
+          description: The process is not ready.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthDown"
+components:
+  parameters:
+    Source:
+      name: source
+      in: path
+      required: true
+      description: Configured source name, for example github or stripe.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Generic extractor. A source with a native id uses that id instead.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    GithubDelivery:
+      name: X-GitHub-Delivery
+      in: header
+      required: false
+      description: GitHub delivery id. Default extractor for source github.
+      schema:
+        type: string
+        minLength: 1
+    GithubSignature:
+      name: X-Hub-Signature-256
+      in: header
+      required: false
+      description: |
+        GitHub signature header. The verifier configured for the source
+        decides which header it reads.
+      schema:
+        type: string
+    StripeSignature:
+      name: Stripe-Signature
+      in: header
+      required: false
+      description: |
+        Stripe signature header, including the timestamp used for tolerance.
+      schema:
+        type: string
+  schemas:
+    WebhookPayload:
+      type: object
+      additionalProperties: true
+      description: |
+        Provider JSON. Integrity uses the raw bytes of the request, not a
+        re-serialization of this object.
+    HandlerResult:
+      type: object
+      additionalProperties: true
+      description: |
+        JSON produced by the application handler. The starter stores those
+        bytes and returns them unchanged on replay.
+    HealthUp:
+      type: object
+      additionalProperties: true
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP]
+    HealthDown:
+      type: object
+      additionalProperties: true
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [DOWN]
