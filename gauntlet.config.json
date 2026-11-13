@@ -60,5 +60,21 @@
       "openapi/**/*.yml",
       "docs/holes-review/**/*.md"
     ]
+  },
+  "contract": {
+    "cases": [
+      {
+        "label": "ingest webhook returns the handler result",
+        "method": "post",
+        "path": "/webhooks/{source}",
+        "expectedStatus": 200
+      },
+      {
+        "label": "health reports ready",
+        "method": "get",
+        "path": "/actuator/health",
+        "expectedStatus": 200
+      }
+    ]
   }
 }
