@@ -32,7 +32,7 @@ Feature: Webhook intake
   Scenario: a different body for a completed delivery is rejected
     Given a source "github" has completed delivery "delivery-1001"
     When the provider delivers a different body for that same delivery
-    Then the delivery is rejected as a fingerprint mismatch
+    Then the delivery is rejected with HTTP 422 as a fingerprint mismatch
     And the stored result is left unchanged
 
   @op:ingestWebhook @unhappy
