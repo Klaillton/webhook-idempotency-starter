@@ -47,4 +47,4 @@ Feature: Webhook intake
     Given a source "github" whose body limit is 1 MiB
     When the provider delivers a body larger than that limit
     Then the delivery is rejected
-    And idempotency is not evaluated
+    And the response status is 413
