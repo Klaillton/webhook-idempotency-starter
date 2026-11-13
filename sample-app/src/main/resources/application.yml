@@ -1,0 +1,11 @@
+webhook:
+  idempotency:
+    lease: 2m
+    timestamp-tolerance: 5m
+    sources:
+      github:
+        secrets:
+          - key: example-github-secret
+      stripe:
+        secrets:
+          - key: example-stripe-secret

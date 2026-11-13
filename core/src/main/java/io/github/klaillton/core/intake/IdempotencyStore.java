@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 /**
- * Persistence port for one delivery. The Postgres adapter is not part of this slice.
+ * Persistence port for one delivery. The Postgres adapter lives in the starter.
  * {@code lockedUntil} on insert and takeover is the lease end the caller calculated.
  */
 public interface IdempotencyStore {
