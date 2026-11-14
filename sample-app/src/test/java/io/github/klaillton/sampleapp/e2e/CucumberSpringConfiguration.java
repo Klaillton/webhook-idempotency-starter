@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
@@ -16,7 +17,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 /** Fixed clock so Retry-After does not move during a scenario. */
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@Import(ReadinessGate.class)
+@Import({ReadinessGate.class, CucumberSpringConfiguration.FixedClock.class})
 public class CucumberSpringConfiguration {
 
     static final Instant FIXED = Instant.parse("2026-06-01T12:00:00Z");
@@ -34,9 +35,14 @@ public class CucumberSpringConfiguration {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
-    @Bean
-    @Primary
-    Clock clock() {
-        return Clock.fixed(FIXED, ZoneOffset.UTC);
+    /** Spring Boot rejects @Bean methods on the Cucumber test class. */
+    @TestConfiguration
+    static class FixedClock {
+
+        @Bean
+        @Primary
+        Clock clock() {
+            return Clock.fixed(FIXED, ZoneOffset.UTC);
+        }
     }
 }

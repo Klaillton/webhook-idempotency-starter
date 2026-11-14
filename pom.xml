@@ -20,6 +20,8 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- Cucumber 7.34.9 needs JUnit Platform 1.14. Boot 3.5.0 manages 5.12.2. -->
+        <junit-jupiter.version>5.14.2</junit-jupiter.version>
         <cucumber.version>7.34.9</cucumber.version>
     </properties>
 
