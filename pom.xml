@@ -23,6 +23,7 @@
         <!-- Cucumber 7.34.9 needs JUnit Platform 1.14. Boot 3.5.0 manages 5.12.2. -->
         <junit-jupiter.version>5.14.2</junit-jupiter.version>
         <cucumber.version>7.34.9</cucumber.version>
+        <archunit.version>1.4.1</archunit.version>
     </properties>
 
     <modules>
