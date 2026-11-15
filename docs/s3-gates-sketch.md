@@ -15,10 +15,10 @@ Example Maven config (core/pom.xml):
   <version>${pitest.version}</version>
   <configuration>
     <targetClasses>
-      <param>io.github.klaillton.core.*</param>
+      <param>io.github.klaillton.core..*</param>
     </targetClasses>
     <targetTests>
-      <param>io.github.klaillton.core.*</param>
+      <param>io.github.klaillton.core..*</param>
     </targetTests>
     <mutationThreshold>80</mutationThreshold>
     <coverageThreshold>0</coverageThreshold>
@@ -33,11 +33,15 @@ Equivalent mutants require explicit human approval with reason (do not auto-kill
 
 Ceiling ≤ 8 on touched methods in `core`. Derived from JaCoCo + cyclomatic complexity.
 
-Gate fails if any method in `core` exceeds 8 after a change. Implementation reuses JaCoCo report (S2) + complexity tool.
+Gate fails if any method in `core` exceeds 8 after a change.
+
+Practical implementation: use the JaCoCo XML report (already produced in S2) plus a complexity source. One concrete option is the SpotBugs Maven plugin with the CRAP score rule, or a small script/check that reads the JaCoCo XML and fails the build when any method in `io.github.klaillton.core..*` has CRAP > 8. The exact plugin/script is left for the implementation PR on this branch.
 
 ## ArchUnit
 
 Fail-closed rule: domain package of `core` must not import Spring, JDBC, servlet, or starter classes.
+
+Current domain package is `io.github.klaillton.core.intake` (and subpackages). If another domain package is added later, this rule must be updated.
 
 Example test (core/src/test/.../ArchitectureTest.java):
 
