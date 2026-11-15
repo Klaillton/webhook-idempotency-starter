@@ -16,6 +16,7 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
 - Existing applications on Spring Boot 2.7/2.8 (`javax.*` namespace, Java 8/11 baseline) are incompatible.
 - The javax → jakarta migration and Java 17+ baseline are mandatory before the starter can be adopted. Mixing the two stacks fails at compile time or on the classpath.
 - Target for adoption: Spring Boot 3.5.x + Java 21 first. Java 25 and Spring Boot 4 are deferred to a later phase.
+- Practice happens on the branch `practice/boot-3-5-java-21` (created for isolated migration experiments).
 
 ### S3 — PIT, CRAP, ArchUnit
 
@@ -34,6 +35,8 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
   - Fail-closed: any violation fails the gate
   - Layers: domain (pure), adapters (may depend on domain), starter (autoconfiguration only)
 
+- These three gates are prepared for implementation (thresholds and scopes are fixed). Implementation can proceed in parallel with e2e work; they do not depend on sample-app.
+
 ### S4 — Cucumber + Testcontainers, openapi-diff
 
 - **Cucumber + Testcontainers**
@@ -44,7 +47,8 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
     4. Failure mid-transaction → rollback; second delivery reprocesses
     5. Concurrent redelivery of the same key (included early)
   - These scenarios remain protected specifications until the e2e module and sample-app exist. When they exist, they must run with real Postgres via Testcontainers and this decision must be revisited to make the gate fail-closed.
-  - Additional desirable scenarios (HMAC + altered payload, large/special response) and product-dependent ones (rate limit, multi-tenant, key expiry, 5xx vs 4xx) are backlog and do not block S4
+  - Next-cycle desirable scenarios (to be added when e2e exists): HMAC valid + altered payload, large/special response body.
+  - Product-dependent backlog (do not block): rate limit, multi-tenant, key expiry, 5xx vs 4xx.
 
 - **openapi-diff**
   - The current `openapi/openapi.yaml` is the official baseline (source of truth).
@@ -58,3 +62,4 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
 - Any change to these thresholds or rules requires a new ADR and `policy-change-approved`
 - Adoption of the starter is blocked until the consuming application has completed the Spring Boot 2.x → 3.5 + Java 21 migration
 - Cucumber/Testcontainers gate is not fail-closed until e2e/sample-app exists; revisit then
+- e2e/sample-app is the main blocker for turning S4 scenarios into running gates; S3 gates and practice branch can proceed independently
