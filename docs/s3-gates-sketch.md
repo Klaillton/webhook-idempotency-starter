@@ -8,7 +8,7 @@ Already implemented in `core/pom.xml`. Scope: `core` only. The 80 % kill score i
 
 Do not copy a `<mutationThreshold>` or `<coverageThreshold>` element into the pom. The pom guard fails any tag whose name contains `threshold`, `minimum`, `coverage`, or `minTests`. Any `pom.xml` change also needs the human label `policy-change-approved`.
 
-Equivalent mutants require explicit human approval with a recorded reason. The residual note in `docs/gauntlet-s3-pendencias.md` is not that approval.
+Equivalent mutants require explicit human approval with a recorded reason. ADR-0003 approves `skipArray`, `decodeEscape`, and `unicode`. The PIT report still lists them as not killed. `docs/gauntlet-s3-pendencias.md` describes them and is not itself the approval.
 
 ## CRAP
 
