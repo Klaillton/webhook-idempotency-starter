@@ -46,27 +46,25 @@ public record IntakeCommand(
 
     @Override
     public boolean equals(Object other) {
-        if (!(other instanceof IntakeCommand(
-                String otherSource,
-                String otherKey,
-                byte[] otherBody,
-                int otherLimit,
-                SignatureScheme otherScheme,
-                String otherHeader,
-                List<SigningSecret> otherSecrets,
-                Duration otherTolerance,
-                Duration otherLease))) {
+        if (!(other instanceof IntakeCommand command)) {
             return false;
         }
-        return source.equals(otherSource)
-                && Objects.equals(key, otherKey)
-                && Arrays.equals(body, otherBody)
-                && bodyLimitBytes == otherLimit
-                && scheme == otherScheme
-                && Objects.equals(signatureHeader, otherHeader)
-                && secrets.equals(otherSecrets)
-                && Objects.equals(timestampTolerance, otherTolerance)
-                && lease.equals(otherLease);
+        return sameDelivery(command) && samePolicy(command);
+    }
+
+    private boolean sameDelivery(IntakeCommand other) {
+        return source.equals(other.source)
+                && Objects.equals(key, other.key)
+                && Arrays.equals(body, other.body)
+                && bodyLimitBytes == other.bodyLimitBytes
+                && scheme == other.scheme;
+    }
+
+    private boolean samePolicy(IntakeCommand other) {
+        return Objects.equals(signatureHeader, other.signatureHeader)
+                && secrets.equals(other.secrets)
+                && Objects.equals(timestampTolerance, other.timestampTolerance)
+                && lease.equals(other.lease);
     }
 
     @Override

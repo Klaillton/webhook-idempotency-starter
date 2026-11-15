@@ -35,13 +35,25 @@ public final class StripeEventId {
         if (key == null || !cursor.eat(':')) {
             return Field.end();
         }
+        return valueOf(cursor, key);
+    }
+
+    private static Field valueOf(Cursor cursor, String key) {
         if ("id".equals(key)) {
-            cursor.skipWs();
-            if (cursor.peek() != '"') {
-                return Field.end();
-            }
-            return Field.found(cursor.readString());
+            return stringId(cursor);
         }
+        return skippedField(cursor);
+    }
+
+    private static Field stringId(Cursor cursor) {
+        cursor.skipWs();
+        if (cursor.peek() != '"') {
+            return Field.end();
+        }
+        return Field.found(cursor.readString());
+    }
+
+    private static Field skippedField(Cursor cursor) {
         if (!cursor.skipValue()) {
             return Field.end();
         }
@@ -125,7 +137,7 @@ public final class StripeEventId {
         boolean skipValue() {
             skipWs();
             return switch (peek()) {
-                case '"' -> readString() != null;
+                case '"' -> skipString();
                 case '{' -> skipObject();
                 case '[' -> skipArray();
                 case 't' -> skipLiteral("true");
@@ -136,10 +148,13 @@ public final class StripeEventId {
             };
         }
 
+        private boolean skipString() {
+            return readString() != null;
+        }
+
         private boolean skipObject() {
-            if (!eat('{')) {
-                return false;
-            }
+            // skipValue calls this only when peek is '{'.
+            index++;
             skipWs();
             if (eat('}')) {
                 return true;
@@ -225,7 +240,17 @@ public final class StripeEventId {
             if (done()) {
                 return null;
             }
-            var esc = text.charAt(index++);
+            return escapeChar(text.charAt(index++));
+        }
+
+        private String escapeChar(char esc) {
+            if (esc == 'u') {
+                return unicode();
+            }
+            return simpleEscape(esc);
+        }
+
+        private String simpleEscape(char esc) {
             return switch (esc) {
                 case '"', '\\', '/' -> String.valueOf(esc);
                 case 'b' -> "\b";
@@ -233,7 +258,6 @@ public final class StripeEventId {
                 case 'n' -> "\n";
                 case 'r' -> "\r";
                 case 't' -> "\t";
-                case 'u' -> unicode();
                 default -> null;
             };
         }
