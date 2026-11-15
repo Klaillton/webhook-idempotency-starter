@@ -43,3 +43,5 @@ Layers: domain (pure) → adapters (may depend on domain) → starter (autoconfi
 - Sample-app Cucumber on `main` (10 scenarios, real Postgres, Flyway v1) passed on 2026-11-15. Surefire still writes `tests="0"` for `CucumberTestEngine`. There is no separate `e2e/` module. `spring.flyway.enabled=true` is on `main` and is merged into this branch.
 
 These three gates do not depend on sample-app. The e2e above was re-run so the "existing" claim in ADR-0002 is checked, not assumed.
+
+What each authorization unlocks is in `docs/gauntlet-s3-bloqueios.md`. `policy-change-approved` on this pull request covers the pom change. The six scores move after an explicit request to change that production code.

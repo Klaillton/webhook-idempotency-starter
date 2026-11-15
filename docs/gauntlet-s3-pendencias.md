@@ -46,6 +46,8 @@ Ligado na branch `practice/boot-3-5-java-21`. `mvn -pl core verify` gera o JaCoC
 
 Seis métodos já medidos acima de 8 ficam de fora enquanto o diff não os toca: `StripeSignature.parse` (16,11), `IntakeCommand.equals` (11), `StripeEventId.readField` (9), `Cursor.decodeEscape` (9), `Cursor.skipValue` (9), `Cursor.skipObject` (9).
 
+O que o label `policy-change-approved` desta PR destrava, e o que uma autorização explícita para alterar o código destrava a seguir, está em `docs/gauntlet-s3-bloqueios.md`.
+
 ## Ainda aberto no ADR-0002
 - **openapi-diff** fica desligado. O motivo está em `docs/gauntlet-s4-openapi-diff.md`. O gate não foi ligado e `gauntlet.config.json` não mudou.
 - Os cenários Gherkin 4 (falha do handler, rollback, segunda entrega reprocessa) e 5 (redelivery concorrente) estão em `features/ingest-webhook.feature` e correm no Postgres pela sample-app. O `protect-specs` só passa com `specs-approved`.
