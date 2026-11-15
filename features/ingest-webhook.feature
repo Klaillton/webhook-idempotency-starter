@@ -48,3 +48,25 @@ Feature: Webhook intake
     When the provider delivers a body larger than that limit
     Then the delivery is rejected
     And the response status is 413
+
+  @op:ingestWebhook @unhappy
+  Scenario: a handler failure rolls the delivery back and a later delivery runs
+    Given a source "github" with a valid signature
+    And delivery "delivery-1001" has not been seen
+    And the handler fails the next delivery
+    When the provider delivers that webhook
+    Then the delivery is rejected
+    And no idempotency record is stored
+    When the provider delivers that webhook again
+    Then the handler result is returned
+    And the delivery is stored as completed
+    And the handler ran again after the failure
+
+  @op:ingestWebhook @edge
+  Scenario: overlapping deliveries of the same key run the handler once
+    Given a source "github" with a valid signature
+    And delivery "delivery-overlap" has not been seen
+    When two providers deliver that webhook before the first handler finishes
+    Then both callers receive the handler result
+    And the handler runs once
+    And the delivery is stored as completed

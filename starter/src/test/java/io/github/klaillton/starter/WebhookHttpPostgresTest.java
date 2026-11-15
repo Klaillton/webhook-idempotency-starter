@@ -172,14 +172,23 @@ class WebhookHttpPostgresTest {
     }
 
     @Test
-    void shouldRemoveReservationWhenHandlerFails() throws Exception {
+    void shouldReprocessWhenTheSameDeliveryFollowsAHandlerFailure() throws Exception {
         handler.failNext();
 
-        var response = postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET);
+        var failed = postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET);
 
-        assertFalse(response.statusCode() >= 200 && response.statusCode() < 300);
+        assertFalse(failed.statusCode() >= 200 && failed.statusCode() < 300);
         assertEquals(0, countRows());
         assertEquals(0, effectCount());
+        assertEquals(1, handler.calls());
+
+        var accepted = postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET);
+
+        assertEquals(200, accepted.statusCode());
+        assertArrayEquals(IntakeFixtures.ACCEPTED, accepted.body());
+        assertEquals("COMPLETED", statusOf("delivery-1001"));
+        assertEquals(1, effectCount());
+        assertEquals(2, handler.calls());
     }
 
     @Test

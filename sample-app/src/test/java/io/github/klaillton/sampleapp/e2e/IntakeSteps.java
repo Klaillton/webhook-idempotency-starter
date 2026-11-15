@@ -20,6 +20,9 @@ import java.security.GeneralSecurityException;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +48,7 @@ public class IntakeSteps {
     private boolean sign = true;
     private Integer expectedStatus;
     private HttpResponse<byte[]> response;
+    private List<HttpResponse<byte[]>> overlapped = List.of();
     private byte[] storedBefore;
     private int callsBefore;
 
@@ -72,8 +76,14 @@ public class IntakeSteps {
         sign = true;
         expectedStatus = null;
         response = null;
+        overlapped = List.of();
         storedBefore = null;
         callsBefore = 0;
+    }
+
+    @Given("the handler fails the next delivery")
+    public void failNextDelivery() {
+        handler.failNextDelivery();
     }
 
     @Given("a source {string} with a valid signature")
@@ -168,6 +178,37 @@ public class IntakeSteps {
         post();
     }
 
+    @When("the provider delivers that webhook again")
+    public void deliverWebhookAgain() throws Exception {
+        post();
+    }
+
+    @When("two providers deliver that webhook before the first handler finishes")
+    public void overlap() throws Exception {
+        handler.holdNextDelivery();
+        CompletableFuture<HttpResponse<byte[]>> first = CompletableFuture.supplyAsync(this::sendUnchecked);
+        CompletableFuture<HttpResponse<byte[]>> second = null;
+        var finished = false;
+        try {
+            assertTrue(handler.awaitHeldDelivery());
+            second = CompletableFuture.supplyAsync(this::sendUnchecked);
+            Thread.sleep(300);
+            assertEquals(1, handler.deliveriesHandled());
+            handler.releaseHeldDelivery();
+            var left = first.get(20, TimeUnit.SECONDS);
+            var right = second.get(20, TimeUnit.SECONDS);
+            overlapped = List.of(left, right);
+            response = left;
+            finished = true;
+        } finally {
+            handler.releaseHeldDelivery();
+            if (!finished) {
+                awaitQuiet(first);
+                awaitQuiet(second);
+            }
+        }
+    }
+
     @Then("the handler result is returned")
     public void handlerResult() {
         assertEquals(200, response.statusCode());
@@ -189,6 +230,25 @@ public class IntakeSteps {
     @Then("the handler does not run again")
     public void handlerStays() {
         assertEquals(callsBefore, handler.deliveriesHandled());
+    }
+
+    @Then("the handler ran again after the failure")
+    public void handlerRanAgain() {
+        assertEquals(2, handler.deliveriesHandled());
+    }
+
+    @Then("both callers receive the handler result")
+    public void bothResults() {
+        assertEquals(2, overlapped.size());
+        for (var one : overlapped) {
+            assertEquals(200, one.statusCode());
+            assertEquals(new String(SampleWebhookHandler.ACCEPTED, StandardCharsets.UTF_8), bodyText(one.body()));
+        }
+    }
+
+    @Then("the handler runs once")
+    public void handlerOnce() {
+        assertEquals(1, handler.deliveriesHandled());
     }
 
     @Then("the delivery is rejected")
@@ -266,6 +326,18 @@ public class IntakeSteps {
     }
 
     private void post() throws Exception {
+        response = sendRequest();
+    }
+
+    private HttpResponse<byte[]> sendUnchecked() {
+        try {
+            return sendRequest();
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    private HttpResponse<byte[]> sendRequest() throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/webhooks/" + source))
                 .header("Content-Type", "application/json")
                 .header("X-GitHub-Delivery", deliveryId)
@@ -275,7 +347,20 @@ public class IntakeSteps {
         } else {
             builder.header("X-Hub-Signature-256", "sha256=00");
         }
-        response = http.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+        return http.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+    }
+
+    private static void awaitQuiet(CompletableFuture<HttpResponse<byte[]>> call) {
+        if (call == null) {
+            return;
+        }
+        try {
+            call.get(20, TimeUnit.SECONDS);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        } catch (Exception ex) {
+            // The scenario assertion is the failure. This only stops the request from leaking.
+        }
     }
 
     private HttpResponse<byte[]> probe() throws Exception {

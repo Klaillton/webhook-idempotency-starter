@@ -32,8 +32,16 @@ O único chamador é `readString`. No fim do texto, a string vazia é acrescenta
 
 Com exatamente quatro dígitos hex não há aspas de fecho a seguir, e `readString` devolve `null` nos dois lados. Com cinco ou mais caracteres (aspas ou mais texto), `>` e `>=` são os dois falsos. O resultado não muda.
 
+## Decisões de produto pendentes
+
+O slice do S4 não fecha estas três. Continuam na secção 10 de `docs/ARCHITECTURE.md`.
+
+- **Chave ausente.** Uma entrega sem chave de idempotência não tem estado HTTP. Não se mapeia para 400 nem para 200, e o store não é escrito. Falta decidir se a omissão rejeita ou se processa sem idempotência.
+- **Tenant.** A chave continua `(source, key)`. Incluir `tenant_id` está em aberto.
+- **Retenção.** O corpo da resposta é guardado e repetido. Período, limite de tamanho, truncagem e nonce não estão definidos. `expires_at` fica null.
+
 ## Ainda aberto no ADR-0002
 
-- **CRAP ≤ 8** no `core` (JaCoCo mais complexidade ciclomática dos métodos tocados) não está ligado.
-- **openapi-diff** continua sem motivo de skip no runner. O ADR manda o gate desligado, com esse motivo, até existir uma baseline estável de OpenAPI.
-- Os cenários Gherkin 4 (falha do handler, rollback, segunda entrega reprocessa) e 5 (redelivery concorrente) existem como testes Testcontainers no starter, não em `features/`. Editar Gherkin exige `specs-approved`.
+- **CRAP ≤ 8** no `core` (JaCoCo mais complexidade ciclomática dos métodos tocados) não está ligado. Não bloqueia os cenários do S4.
+- **openapi-diff** fica desligado. O motivo está em `docs/gauntlet-s4-openapi-diff.md`. O gate não foi ligado e `gauntlet.config.json` não mudou.
+- Os cenários Gherkin 4 (falha do handler, rollback, segunda entrega reprocessa) e 5 (redelivery concorrente) estão em `features/ingest-webhook.feature` e correm no Postgres pela sample-app. O `protect-specs` só passa com `specs-approved`.
