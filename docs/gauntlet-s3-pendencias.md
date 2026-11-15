@@ -40,8 +40,12 @@ O slice do S4 não fecha estas três. Continuam na secção 10 de `docs/ARCHITEC
 - **Tenant.** A chave continua `(source, key)`. Incluir `tenant_id` está em aberto.
 - **Retenção.** O corpo da resposta é guardado e repetido. Período, limite de tamanho, truncagem e nonce não estão definidos. `expires_at` fica null.
 
-## Ainda aberto no ADR-0002
+## CRAP nos métodos tocados
 
-- **CRAP ≤ 8** no `core` (JaCoCo mais complexidade ciclomática dos métodos tocados) não está ligado. Não bloqueia os cenários do S4.
+Ligado na branch `practice/boot-3-5-java-21`. `mvn -pl core verify` gera o JaCoCo e o `CrapGate` falha se um método do `core` tocado pelo diff passa de 8. O tecto está no código, não numa tag do `pom.xml`. Sem métodos tocados, o gate passa.
+
+Seis métodos já medidos acima de 8 ficam de fora enquanto o diff não os toca: `StripeSignature.parse` (16,11), `IntakeCommand.equals` (11), `StripeEventId.readField` (9), `Cursor.decodeEscape` (9), `Cursor.skipValue` (9), `Cursor.skipObject` (9).
+
+## Ainda aberto no ADR-0002
 - **openapi-diff** fica desligado. O motivo está em `docs/gauntlet-s4-openapi-diff.md`. O gate não foi ligado e `gauntlet.config.json` não mudou.
 - Os cenários Gherkin 4 (falha do handler, rollback, segunda entrega reprocessa) e 5 (redelivery concorrente) estão em `features/ingest-webhook.feature` e correm no Postgres pela sample-app. O `protect-specs` só passa com `specs-approved`.

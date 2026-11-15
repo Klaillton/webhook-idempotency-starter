@@ -4,62 +4,42 @@ Practice branch for Boot 3.5 / Java 21. Thresholds fixed in ADR-0002.
 
 ## PIT (mutation testing)
 
-Scope: `core` module only. Threshold: 80 % kill score.
+Already implemented in `core/pom.xml`. Scope: `core` only. The 80 % kill score is the CLI property `-DmutationThreshold=80`.
 
-Example Maven config (core/pom.xml):
+Do not copy a `<mutationThreshold>` or `<coverageThreshold>` element into the pom. The pom guard fails any tag whose name contains `threshold`, `minimum`, `coverage`, or `minTests`. Any `pom.xml` change also needs the human label `policy-change-approved`.
 
-```xml
-<plugin>
-  <groupId>org.pitest</groupId>
-  <artifactId>pitest-maven</artifactId>
-  <version>${pitest.version}</version>
-  <configuration>
-    <targetClasses>
-      <param>io.github.klaillton.core..*</param>
-    </targetClasses>
-    <targetTests>
-      <param>io.github.klaillton.core..*</param>
-    </targetTests>
-    <mutationThreshold>80</mutationThreshold>
-    <coverageThreshold>0</coverageThreshold>
-    <timestampedReports>false</timestampedReports>
-  </configuration>
-</plugin>
-```
-
-Equivalent mutants require explicit human approval with reason (do not auto-kill).
+Equivalent mutants require explicit human approval with a recorded reason. The residual note in `docs/gauntlet-s3-pendencias.md` is not that approval.
 
 ## CRAP
 
-Ceiling ≤ 8 on touched methods in `core`. Derived from JaCoCo + cyclomatic complexity.
+Ceiling ≤ 8 on **touched** methods in `core` (ADR-0002). JaCoCo was not already producing a report. `core/pom.xml` now runs JaCoCo 0.8.13 (`prepare-agent`, then `report` on `verify`) and `CrapGate` reads the `COMPLEXITY` counter:
 
-Gate fails if any method in `core` exceeds 8 after a change.
+`CRAP = CC^2 * (1 - covered/CC)^3 + CC`
 
-Practical implementation: use the JaCoCo XML report (already produced in S2) plus a complexity source. One concrete option is the SpotBugs Maven plugin with the CRAP score rule, or a small script/check that reads the JaCoCo XML and fails the build when any method in `io.github.klaillton.core..*` has CRAP > 8. The exact plugin/script is left for the implementation PR on this branch.
+`mvn -pl core verify` runs the gate. `mvn test` does not. A method counts as touched when `origin/main...HEAD` or the working tree changes a line in its range. No touched methods is a pass. Git is required.
+
+These methods already score above 8. The gate does not fail the branch while the diff leaves them alone. The next edit that touches one has to bring it back to 8 or under:
+
+| Method | CC | Coverage | CRAP |
+|---|---:|---:|---:|
+| `StripeSignature.parse` | 9 | 0.56 | 16.11 |
+| `IntakeCommand.equals` | 11 | 1.00 | 11.00 |
+| `StripeEventId.readField` | 9 | 1.00 | 9.00 |
+| `StripeEventId.Cursor.decodeEscape` | 9 | 1.00 | 9.00 |
+| `StripeEventId.Cursor.skipValue` | 9 | 1.00 | 9.00 |
+| `StripeEventId.Cursor.skipObject` | 8 | 0.75 | 9.00 |
 
 ## ArchUnit
 
-Fail-closed rule: domain package of `core` must not import Spring, JDBC, servlet, or starter classes.
-
-Current domain package is `io.github.klaillton.core.intake` (and subpackages). If another domain package is added later, this rule must be updated.
-
-Example test (core/src/test/.../ArchitectureTest.java):
-
-```java
-@AnalyzeClasses(packages = "io.github.klaillton.core")
-public class ArchitectureTest {
-  @ArchTest
-  static final ArchRule domain_isolation = noClasses()
-      .that().resideInAPackage("io.github.klaillton.core.intake..")
-      .should().dependOnClassesThat()
-      .resideInAnyPackage(
-          "org.springframework..",
-          "java.sql..",
-          "jakarta.servlet..",
-          "io.github.klaillton.starter..");
-}
-```
+Already implemented in `CoreArchitectureTest`. It imports `io.github.klaillton.core` without test classes and rejects Spring, `java.sql`, `javax.sql`, `jakarta.servlet`, `javax.servlet`, and `io.github.klaillton.starter`. Do not narrow that rule to the sketch's smaller package list.
 
 Layers: domain (pure) → adapters (may depend on domain) → starter (autoconfiguration only).
 
-These three can be implemented independently of the e2e (already marked existing).
+## Blockers checked before this implementation
+
+- A pom snippet with `<mutationThreshold>` or `<coverageThreshold>` is not usable. Threshold tags and any pom edit are policy changes.
+- openapi-diff still has no runner in the pinned kit (`481ead9`). The ADR says the rule is active when that runner exists. This slice does not enable it and does not edit `gauntlet.config.json`.
+- Product decisions still open in ARCHITECTURE section 10: missing idempotency key, tenant, response retention. They do not block this gate.
+- Sample-app Cucumber on `main` (10 scenarios, real Postgres, Flyway v1) passed on 2026-11-15. Surefire still writes `tests="0"` for `CucumberTestEngine`. There is no separate `e2e/` module. `spring.flyway.enabled=true` is on `main` and is merged into this branch.
+
+These three gates do not depend on sample-app. The e2e above was re-run so the "existing" claim in ADR-0002 is checked, not assumed.
