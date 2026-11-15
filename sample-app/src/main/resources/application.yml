@@ -1,3 +1,7 @@
+spring:
+  flyway:
+    enabled: true
+
 webhook:
   idempotency:
     lease: 2m
