@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -206,6 +207,55 @@ class WebhookIntakeTest {
         assertEquals(IdempotencyRecord.Status.IN_PROGRESS, kept.status());
         assertEquals("other", kept.fingerprint());
         assertEquals(NOW.plus(Duration.ofMinutes(5)), kept.lockedUntil());
+    }
+
+    @Test
+    void shouldRoundPartialSecondsUpWhenTheLeaseHasNotEnded() {
+        assertEquals(10, WebhookIntake.wholeSecondsUntil(NOW, NOW.plusSeconds(10)));
+        assertEquals(1, WebhookIntake.wholeSecondsUntil(NOW, NOW.plusNanos(1)));
+        assertEquals(0, WebhookIntake.wholeSecondsUntil(NOW, NOW));
+        assertEquals(0, WebhookIntake.wholeSecondsUntil(NOW, NOW.minusNanos(1)));
+    }
+
+    @Test
+    void shouldStopAfterThreeAttemptsWhenTheStoreNeverInserts() {
+        var attempts = new AtomicInteger();
+        IdempotencyStore rejecting = new IdempotencyStore() {
+            @Override
+            public Optional<IdempotencyRecord> find(String source, String key) {
+                return Optional.empty();
+            }
+
+            @Override
+            public boolean insertInProgress(String source, String key, String fingerprint, Instant lockedUntil) {
+                attempts.incrementAndGet();
+                return false;
+            }
+
+            @Override
+            public boolean takeover(
+                    String source, String key, String fingerprint, Instant expectedLockedUntil, Instant newLockedUntil) {
+                return false;
+            }
+
+            @Override
+            public boolean complete(String source, String key, Instant expectedLockedUntil, byte[] responseBody) {
+                return false;
+            }
+
+            @Override
+            public boolean deleteInProgress(String source, String key, Instant expectedLockedUntil) {
+                return false;
+            }
+        };
+        var intake = new WebhookIntake(rejecting, Clock.fixed(NOW, ZoneOffset.UTC));
+
+        var error = assertThrows(
+                IllegalStateException.class,
+                () -> intake.receive(command(body("{}"), "delivery-1001", github(body("{}"))), event -> new WebhookResult(RESULT)));
+
+        assertEquals("idempotency store did not settle", error.getMessage());
+        assertEquals(3, attempts.get());
     }
 
     @Test
