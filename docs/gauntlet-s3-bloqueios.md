@@ -43,7 +43,7 @@ A frase a autorizar a alteração do código dos seis métodos foi dada em 2026-
 
 `IdempotencyRecord.equals` está em 8,00. Fica como está enquanto um diff não o tocar.
 
-O chat não é `ALLOW_SPEC_EDIT=1`, não é um label do GitHub e não é `allowSpecEdit` na base. Este diff toca `core/src/main` e não inclui `docs/holes-review`. Os gates lêem outra autorização, posta pelo humano:
+O chat não é `ALLOW_SPEC_EDIT=1`, não é um label do GitHub e não é `allowSpecEdit` na base. Este diff toca `core/src/main`. O humano pôs `specs-approved` na PR #12, e o mesmo diff inclui `docs/holes-review/s3-crap.md`. Os gates também aceitam estes labels, que o humano já pôs e que o agente não aplica:
 
 - **spec-code (CHANGE-3).** O mesmo diff inclui um spec protegido (Gherkin, OpenAPI ou `docs/holes-review`), ou a PR recebe `spec-sync-approved`.
 - **holes-review (D12).** O mesmo diff inclui `docs/holes-review/**/*.md` com as secções preenchidas, ou a PR recebe `holes-approved`.
@@ -61,4 +61,4 @@ O chat não é `ALLOW_SPEC_EDIT=1`, não é um label do GitHub e não é `allowS
 ## Como seguir
 
 1. `policy-change-approved` já está nesta PR e cobre o pom do CRAP. Este commit não muda o pom.
-2. O check obrigatório do repositório é `policy-base (base-run, PR)`. `spec-code` e `holes-review` estão no `gauntlet.config.json` e ainda não têm ficheiro protegido neste diff. Os labels `spec-sync-approved` e `holes-approved`, ou `specs-approved` para eu escrever o `docs/holes-review`, ficam com o humano. O agente não os aplica.
+2. O check obrigatório do repositório é `policy-base (base-run, PR)`. O holes-review deste diff é `docs/holes-review/s3-crap.md`, escrito depois de o humano pôr `specs-approved`. `holes-approved` e `spec-sync-approved` também estão na PR. O agente não os pôs e não faz o merge.

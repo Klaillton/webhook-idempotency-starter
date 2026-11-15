@@ -48,7 +48,7 @@ Ligado na branch `practice/boot-3-5-java-21`. `mvn -pl core verify` gera o JaCoC
 
 A autorização explícita para alterar o código partiu estes seis métodos. No `verify` de 2026-11-15 cada método tocado ficou em 8 ou menos: `parse` 6, `acceptPart` 4, `equals` 4, `sameDelivery` 6, `samePolicy` 5, `readField` 4, `valueOf` 2, `stringId` 2, `skippedField` 4, `skipValue` 8, `skipString` 2, `skipObject` 7, `decodeEscape` 2, `escapeChar` 2, `simpleEscape` 7. `skipValue` está em 8,0 e o gate só falha acima de 8.
 
-O que o label `policy-change-approved` desta PR destrava está em `docs/gauntlet-s3-bloqueios.md`.
+O que o label `policy-change-approved` desta PR destrava está em `docs/gauntlet-s3-bloqueios.md`. O holes-review do diff é `docs/holes-review/s3-crap.md`.
 
 ## Ainda aberto no ADR-0002
 - **openapi-diff** fica desligado. O motivo está em `docs/gauntlet-s4-openapi-diff.md`. O gate não foi ligado e `gauntlet.config.json` não mudou.
