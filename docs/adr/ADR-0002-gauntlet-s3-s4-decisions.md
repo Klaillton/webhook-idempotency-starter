@@ -10,6 +10,13 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
 
 ## Decision
 
+### Baseline and migration requirement
+
+- The starter requires Spring Boot 3.5.x + Java 21 (Jakarta EE / `jakarta.*` namespace).
+- Existing applications on Spring Boot 2.7/2.8 (`javax.*` namespace, Java 8/11 baseline) are incompatible.
+- The javax → jakarta migration and Java 17+ baseline are mandatory before the starter can be adopted. Mixing the two stacks fails at compile time or on the classpath.
+- Target for adoption: Spring Boot 3.5.x + Java 21 first. Java 25 and Spring Boot 4 are deferred to a later phase.
+
 ### S3 — PIT, CRAP, ArchUnit
 
 - **PIT (mutation testing)**
@@ -47,3 +54,4 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
 
 - The Grok CLI can now treat these values as fixed policy for S3 and S4
 - Any change to these thresholds or rules requires a new ADR and `policy-change-approved`
+- Adoption of the starter is blocked until the consuming application has completed the Spring Boot 2.x → 3.5 + Java 21 migration
