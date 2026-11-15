@@ -27,18 +27,23 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
   - Fail-closed: any violation fails the gate
   - Layers: domain (pure), adapters (may depend on domain), starter (autoconfiguration only)
 
-### S4 — Cucumber + Testcontainers
+### S4 — Cucumber + Testcontainers, openapi-diff
 
-- Minimum scenarios (all with real Postgres via Testcontainers, Gherkin in `features/`):
-  1. New webhook → process and store response
-  2. Same idempotency key → replay original response, do not reprocess
-  3. Invalid HMAC → reject and do not store
-  4. Failure mid-transaction → rollback; second delivery reprocesses
-  5. Concurrent redelivery of the same key (included early)
-- Additional desirable scenarios (HMAC + altered payload, large/special response) and product-dependent ones (rate limit, multi-tenant, key expiry, 5xx vs 4xx) are backlog and do not block S4
+- **Cucumber + Testcontainers**
+  - Minimum scenarios (all with real Postgres via Testcontainers, Gherkin in `features/`):
+    1. New webhook → process and store response
+    2. Same idempotency key → replay original response, do not reprocess
+    3. Invalid HMAC → reject and do not store
+    4. Failure mid-transaction → rollback; second delivery reprocesses
+    5. Concurrent redelivery of the same key (included early)
+  - Additional desirable scenarios (HMAC + altered payload, large/special response) and product-dependent ones (rate limit, multi-tenant, key expiry, 5xx vs 4xx) are backlog and do not block S4
+
+- **openapi-diff**
+  - The OpenAPI file of the gateway (when it exists) is the source of truth; diffs are taken against the version on the base branch
+  - Breaking changes (removed fields, type changes, mandatory status code changes) fail the gate; non-breaking changes (optional fields, new endpoints) pass
+  - The gate stays disabled with an explicit skip reason until a stable OpenAPI baseline exists
 
 ## Consequences
 
-- The Grok CLI can now treat these values as fixed policy for S3 and the Cucumber part of S4
+- The Grok CLI can now treat these values as fixed policy for S3 and S4
 - Any change to these thresholds or rules requires a new ADR and `policy-change-approved`
-- openapi-diff remains the only S4 item still open
