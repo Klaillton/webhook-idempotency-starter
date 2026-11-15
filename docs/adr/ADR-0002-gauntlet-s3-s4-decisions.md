@@ -37,12 +37,13 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
 ### S4 — Cucumber + Testcontainers, openapi-diff
 
 - **Cucumber + Testcontainers**
-  - Minimum scenarios (all with real Postgres via Testcontainers, Gherkin in `features/`):
+  - Minimum scenarios (Gherkin in `features/`, currently specification only):
     1. New webhook → process and store response
     2. Same idempotency key → replay original response, do not reprocess
     3. Invalid HMAC → reject and do not store
     4. Failure mid-transaction → rollback; second delivery reprocesses
     5. Concurrent redelivery of the same key (included early)
+  - These scenarios remain protected specifications until the e2e module and sample-app exist. When they exist, they must run with real Postgres via Testcontainers and this decision must be revisited to make the gate fail-closed.
   - Additional desirable scenarios (HMAC + altered payload, large/special response) and product-dependent ones (rate limit, multi-tenant, key expiry, 5xx vs 4xx) are backlog and do not block S4
 
 - **openapi-diff**
@@ -56,3 +57,4 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
 - The Grok CLI can now treat these values as fixed policy for S3 and S4
 - Any change to these thresholds or rules requires a new ADR and `policy-change-approved`
 - Adoption of the starter is blocked until the consuming application has completed the Spring Boot 2.x → 3.5 + Java 21 migration
+- Cucumber/Testcontainers gate is not fail-closed until e2e/sample-app exists; revisit then
