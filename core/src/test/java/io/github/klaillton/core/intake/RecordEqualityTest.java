@@ -22,7 +22,8 @@ class RecordEqualityTest {
 
     @Test
     void shouldMatchWebhookResultWhenTheBodyBytesMatch() {
-        var result = new WebhookResult(BODY);
+        var input = new byte[] {1, 2, 3};
+        var result = new WebhookResult(input);
         var copy = new WebhookResult(new byte[] {1, 2, 3});
 
         assertEquals(copy, result);
@@ -31,8 +32,12 @@ class RecordEqualityTest {
         assertNotEquals(result, new WebhookResult(new byte[] {1, 2}));
         assertNotEquals(result, new WebhookResult(null));
         assertFalse(result.equals("WebhookResult"));
-        result.body()[0] = 9;
-        assertArrayEquals(BODY, result.body());
+
+        input[0] = 9;
+        assertArrayEquals(new byte[] {1, 2, 3}, result.body());
+        var leaked = result.body();
+        leaked[0] = 8;
+        assertArrayEquals(new byte[] {1, 2, 3}, result.body());
 
         var empty = new WebhookResult(null);
         assertArrayEquals(new byte[0], empty.body());
