@@ -35,7 +35,7 @@ class SignatureBoundaryTest {
     }
 
     @Test
-    void shouldRejectHmacWhenTheProvidedMacIsNot32Bytes() {
+    void shouldRejectHmacWhenTheProvidedMacIsWrongLengthOrDoesNotMatch() {
         var key = "secret".getBytes(StandardCharsets.US_ASCII);
 
         assertFalse(HmacSha256.matches(key, BODY, new byte[31]));
