@@ -46,9 +46,10 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
   - Additional desirable scenarios (HMAC + altered payload, large/special response) and product-dependent ones (rate limit, multi-tenant, key expiry, 5xx vs 4xx) are backlog and do not block S4
 
 - **openapi-diff**
-  - The OpenAPI file of the gateway (when it exists) is the source of truth; diffs are taken against the version on the base branch
-  - Breaking changes (removed fields, type changes, mandatory status code changes) fail the gate; non-breaking changes (optional fields, new endpoints) pass
-  - The gate stays disabled with an explicit skip reason until a stable OpenAPI baseline exists
+  - The current `openapi/openapi.yaml` is the official baseline (source of truth).
+  - Diffs are taken against the version on the base branch.
+  - Breaking changes (removed fields, type changes, mandatory status code changes) fail the gate; non-breaking changes (optional fields, new endpoints) pass.
+  - Rule is active as of 2026-11-15. The gate itself runs when the Gauntlet runner implements openapi-diff (still listed as not yet in ADOPT-STATUS).
 
 ## Consequences
 
