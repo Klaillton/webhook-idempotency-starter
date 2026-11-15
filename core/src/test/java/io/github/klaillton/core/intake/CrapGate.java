@@ -228,7 +228,7 @@ public final class CrapGate {
 
     private static Path repoRoot(Path start) {
         var current = start;
-        while (current != null && !Files.isDirectory(current.resolve(".git"))) {
+        while (current != null && !Files.exists(current.resolve(".git"))) {
             current = current.getParent();
         }
         if (current == null) {
