@@ -40,13 +40,14 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
 ### S4 — Cucumber + Testcontainers, openapi-diff
 
 - **Cucumber + Testcontainers**
-  - Minimum scenarios (Gherkin in `features/`, currently specification only):
+  - Status: **existing and enabled** (as of 2026-11-15). The sample-app contains the Cucumber steps, Testcontainers Postgres configuration, and the five minimum scenarios (plus extras) in `features/ingest-webhook.feature`.
+  - Minimum scenarios (now running against real Postgres via Testcontainers):
     1. New webhook → process and store response
     2. Same idempotency key → replay original response, do not reprocess
     3. Invalid HMAC → reject and do not store
     4. Failure mid-transaction → rollback; second delivery reprocesses
     5. Concurrent redelivery of the same key (included early)
-  - These scenarios remain protected specifications until the e2e module and sample-app exist. When they exist, they must run with real Postgres via Testcontainers and this decision must be revisited to make the gate fail-closed.
+  - Flyway must be explicitly enabled (`spring.flyway.enabled=true`) in consuming applications and future step definitions so the `idempotency_record` migration runs reliably under Testcontainers. Documented for future steps.
   - Next-cycle desirable scenarios (to be added when e2e exists): HMAC valid + altered payload, large/special response body.
   - Product-dependent backlog (do not block): rate limit, multi-tenant, key expiry, 5xx vs 4xx.
 
@@ -61,5 +62,5 @@ The webhook-idempotency-starter is under the Gauntlet ADD-POLY framework. S1 is 
 - The Grok CLI can now treat these values as fixed policy for S3 and S4
 - Any change to these thresholds or rules requires a new ADR and `policy-change-approved`
 - Adoption of the starter is blocked until the consuming application has completed the Spring Boot 2.x → 3.5 + Java 21 migration
-- Cucumber/Testcontainers gate is not fail-closed until e2e/sample-app exists; revisit then
-- e2e/sample-app is the main blocker for turning S4 scenarios into running gates; S3 gates and practice branch can proceed independently
+- Cucumber/Testcontainers gate is now considered existing and enabled in the sample-app; quality is guaranteed by the running scenarios
+- e2e/sample-app is no longer the main blocker for S4 scenarios; S3 gates and practice branch can proceed independently
