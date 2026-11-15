@@ -56,20 +56,26 @@ public final class StripeSignature {
         Long timestamp = null;
         var signatures = new ArrayList<byte[]>();
         for (var part : header.split(",")) {
-            var pair = part.trim().split("=", 2);
-            if (pair.length != 2) {
-                continue;
-            }
-            if ("t".equals(pair[0])) {
-                timestamp = parseTimestamp(pair[1]);
-            } else if ("v1".equals(pair[0])) {
-                HexBytes.decode(pair[1]).ifPresent(signatures::add);
-            }
+            timestamp = acceptPart(part.trim(), timestamp, signatures);
         }
         if (timestamp == null || signatures.isEmpty()) {
             return null;
         }
         return new Parsed(timestamp, List.copyOf(signatures));
+    }
+
+    private static Long acceptPart(String part, Long timestamp, List<byte[]> signatures) {
+        var pair = part.split("=", 2);
+        if (pair.length != 2) {
+            return timestamp;
+        }
+        if ("t".equals(pair[0])) {
+            return parseTimestamp(pair[1]);
+        }
+        if ("v1".equals(pair[0])) {
+            HexBytes.decode(pair[1]).ifPresent(signatures::add);
+        }
+        return timestamp;
     }
 
     private static Long parseTimestamp(String value) {

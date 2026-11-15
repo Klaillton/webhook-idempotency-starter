@@ -18,16 +18,25 @@ Ceiling ≤ 8 on **touched** methods in `core` (ADR-0002). JaCoCo was not alread
 
 `mvn -pl core verify` runs the gate. `mvn test` does not. A method counts as touched when `origin/main...HEAD` or the working tree changes a line in its range. No touched methods is a pass. Git is required.
 
-These methods already score above 8. The gate does not fail the branch while the diff leaves them alone. The next edit that touches one has to bring it back to 8 or under:
+The six methods that scored above 8 were split, on an explicit request to change that code, until every touched method scored 8 or under. `mvn -pl core verify` on 2026-11-15 passed. `skipValue` is exactly 8.0, and the gate fails only when the score is greater than 8.
 
-| Method | CC | Coverage | CRAP |
+| Method | CC | Covered | CRAP |
 |---|---:|---:|---:|
-| `StripeSignature.parse` | 9 | 0.56 | 16.11 |
-| `IntakeCommand.equals` | 11 | 1.00 | 11.00 |
-| `StripeEventId.readField` | 9 | 1.00 | 9.00 |
-| `StripeEventId.Cursor.decodeEscape` | 9 | 1.00 | 9.00 |
-| `StripeEventId.Cursor.skipValue` | 9 | 1.00 | 9.00 |
-| `StripeEventId.Cursor.skipObject` | 8 | 0.75 | 9.00 |
+| `StripeSignature.parse` | 6 | 6 | 6 |
+| `StripeSignature.acceptPart` | 4 | 4 | 4 |
+| `IntakeCommand.equals` | 4 | 4 | 4 |
+| `IntakeCommand.sameDelivery` | 6 | 6 | 6 |
+| `IntakeCommand.samePolicy` | 5 | 5 | 5 |
+| `StripeEventId.readField` | 4 | 4 | 4 |
+| `StripeEventId.valueOf` | 2 | 2 | 2 |
+| `StripeEventId.stringId` | 2 | 2 | 2 |
+| `StripeEventId.skippedField` | 4 | 4 | 4 |
+| `StripeEventId.Cursor.skipValue` | 8 | 8 | 8 |
+| `StripeEventId.Cursor.skipString` | 2 | 2 | 2 |
+| `StripeEventId.Cursor.skipObject` | 7 | 7 | 7 |
+| `StripeEventId.Cursor.decodeEscape` | 2 | 2 | 2 |
+| `StripeEventId.Cursor.escapeChar` | 2 | 2 | 2 |
+| `StripeEventId.Cursor.simpleEscape` | 7 | 7 | 7 |
 
 ## ArchUnit
 
@@ -44,4 +53,4 @@ Layers: domain (pure) → adapters (may depend on domain) → starter (autoconfi
 
 These three gates do not depend on sample-app. The e2e above was re-run so the "existing" claim in ADR-0002 is checked, not assumed.
 
-What each authorization unlocks is in `docs/gauntlet-s3-bloqueios.md`. `policy-change-approved` on this pull request covers the pom change. The six scores move after an explicit request to change that production code.
+What each authorization unlocks is in `docs/gauntlet-s3-bloqueios.md`. `policy-change-approved` on this pull request covers the pom change. The production edit of the six methods is the explicit code change recorded there.

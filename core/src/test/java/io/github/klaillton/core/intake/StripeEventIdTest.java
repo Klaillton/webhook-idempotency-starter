@@ -134,6 +134,7 @@ class StripeEventIdTest {
         assertFalse(new StripeEventId.Cursor("{\"a\" 1}").skipValue());
         assertFalse(new StripeEventId.Cursor("{\"a\":1 \"b\":2}").skipValue());
         assertFalse(new StripeEventId.Cursor("{\"a\":1,}").skipValue());
+        assertFalse(new StripeEventId.Cursor("{\"a\":?}").skipValue());
         assertFalse(new StripeEventId.Cursor("\"abc").skipValue());
     }
 

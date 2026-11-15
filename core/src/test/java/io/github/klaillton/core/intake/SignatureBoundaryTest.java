@@ -72,9 +72,26 @@ class SignatureBoundaryTest {
         assertFalse(StripeSignature.verifies(BODY, wrong, List.of(active), Duration.ofMinutes(5), NOW));
         assertFalse(StripeSignature.verifies(BODY, good, List.of(expired), Duration.ofMinutes(5), NOW));
         assertFalse(StripeSignature.verifies(BODY, " ", List.of(active), Duration.ofMinutes(5), NOW));
+        assertFalse(StripeSignature.verifies(BODY, null, List.of(active), Duration.ofMinutes(5), NOW));
         assertThrows(
                 IllegalArgumentException.class,
                 () -> StripeSignature.verifies(BODY, good, List.of(active), null, NOW));
+    }
+
+    @Test
+    void shouldAcceptStripeSignatureWhenIgnoredPartsSurroundTheTimestampAndV1() {
+        var secret = new SigningSecret("whsec".getBytes(StandardCharsets.US_ASCII), null);
+        var header = "noise,v0=00,t=1492774577,,v1=zz,v1=" + STRIPE_HEX;
+
+        assertTrue(StripeSignature.verifies(BODY, header, List.of(secret), Duration.ofMinutes(5), NOW));
+    }
+
+    @Test
+    void shouldRejectStripeSignatureWhenTheTimestampOrTheSignatureIsMissing() {
+        var secret = new SigningSecret("whsec".getBytes(StandardCharsets.US_ASCII), null);
+
+        assertFalse(StripeSignature.verifies(BODY, "t=1492774577", List.of(secret), Duration.ofMinutes(5), NOW));
+        assertFalse(StripeSignature.verifies(BODY, "v1=" + STRIPE_HEX, List.of(secret), Duration.ofMinutes(5), NOW));
     }
 
     @Test

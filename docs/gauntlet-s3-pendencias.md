@@ -1,6 +1,6 @@
 # O que esta fatia do Gauntlet S3 não fecha
 
-Registo de 2026-11-15. O PIT 1.19.4 no módulo `core` matou **339 de 343** mutantes (99%). O limiar do ADR-0002 é 80%. A corrida foi:
+Registo de 2026-11-15. O PIT 1.19.4 no módulo `core` matou **357 de 360** mutantes (99%). O limiar do ADR-0002 é 80%. A corrida foi:
 
 ```text
 .\mvnw.cmd -B -ntp -pl core "-DmutationThreshold=80" org.pitest:pitest-maven:mutationCoverage
@@ -12,21 +12,23 @@ Três timeouts de laço infinito entram na conta de mortos do PIT. Não são uma
 
 ## Mutantes que continuam vivos
 
-O ADR-0002 só conta um mutante equivalente como morto depois de aprovação humana com o motivo registado. **Esta nota não é essa aprovação.** Os quatro abaixo ficam de fora dos 339. O score passa sem eles.
+O ADR-0002 só conta um mutante equivalente como morto depois de aprovação humana com o motivo registado. **Esta nota não é essa aprovação.** Os três abaixo ficam de fora dos 357. O score passa sem eles.
 
-### `StripeEventId.Cursor.skipObject`, linha 141
+O ramo morto `if (!eat('{')) return false` de `skipObject` foi removido. `skipValue` só chama `skipObject` quando o carácter seguinte já é `{`. Esse mutante deixou de existir. O equivalente em `skipArray` mantém-se.
 
-`if (!eat('{')) return false` substituído por `return true`. Estado no relatório: `NO_COVERAGE`.
+### `StripeEventId.Cursor.skipArray`
 
-`skipValue` só chama `skipObject` quando o carácter seguinte já é `{`. `eat('{')` sucede e o `return false` não corre. O mesmo vale para `skipArray`, linha 167, com `[`.
+`if (!eat('[')) return false` substituído por `return true`. Estado no relatório: `NO_COVERAGE`.
 
-### `StripeEventId.Cursor.decodeEscape`, linha 226
+`skipValue` só chama `skipArray` quando o carácter seguinte já é `[`.
+
+### `StripeEventId.Cursor.decodeEscape`
 
 `if (done()) return null` substituído por `return ""`. Estado: `SURVIVED`.
 
 O único chamador é `readString`. No fim do texto, a string vazia é acrescentada e o ciclo seguinte vê o cursor terminado, por isso `readString` devolve `null` nos dois lados. O `id` observável não muda.
 
-### `StripeEventId.Cursor.unicode`, linha 242
+### `StripeEventId.Cursor.unicode`
 
 `index + 4 > text.length()` com a fronteira trocada para `>=`. Estado: `SURVIVED`.
 
@@ -44,9 +46,9 @@ O slice do S4 não fecha estas três. Continuam na secção 10 de `docs/ARCHITEC
 
 Ligado na branch `practice/boot-3-5-java-21`. `mvn -pl core verify` gera o JaCoCo e o `CrapGate` falha se um método do `core` tocado pelo diff passa de 8. O tecto está no código, não numa tag do `pom.xml`. Sem métodos tocados, o gate passa.
 
-Seis métodos já medidos acima de 8 ficam de fora enquanto o diff não os toca: `StripeSignature.parse` (16,11), `IntakeCommand.equals` (11), `StripeEventId.readField` (9), `Cursor.decodeEscape` (9), `Cursor.skipValue` (9), `Cursor.skipObject` (9).
+A autorização explícita para alterar o código partiu estes seis métodos. No `verify` de 2026-11-15 cada método tocado ficou em 8 ou menos: `parse` 6, `acceptPart` 4, `equals` 4, `sameDelivery` 6, `samePolicy` 5, `readField` 4, `valueOf` 2, `stringId` 2, `skippedField` 4, `skipValue` 8, `skipString` 2, `skipObject` 7, `decodeEscape` 2, `escapeChar` 2, `simpleEscape` 7. `skipValue` está em 8,0 e o gate só falha acima de 8.
 
-O que o label `policy-change-approved` desta PR destrava, e o que uma autorização explícita para alterar o código destrava a seguir, está em `docs/gauntlet-s3-bloqueios.md`.
+O que o label `policy-change-approved` desta PR destrava está em `docs/gauntlet-s3-bloqueios.md`.
 
 ## Ainda aberto no ADR-0002
 - **openapi-diff** fica desligado. O motivo está em `docs/gauntlet-s4-openapi-diff.md`. O gate não foi ligado e `gauntlet.config.json` não mudou.
