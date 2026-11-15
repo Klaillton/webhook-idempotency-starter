@@ -53,7 +53,7 @@ public class IntakeFixtures {
         public WebhookResult handle(WebhookEvent event) {
             calls.incrementAndGet();
             jdbc.update("INSERT INTO handler_effect (id) VALUES (?)", event.key());
-            if (fail.get()) {
+            if (fail.compareAndSet(true, false)) {
                 throw new IllegalStateException("handler failed");
             }
             if (block.get()) {
@@ -67,6 +67,7 @@ public class IntakeFixtures {
             return calls.get();
         }
 
+        /** Arms a single failure. The next handle clears it so a later delivery can run. */
         public void failNext() {
             fail.set(true);
         }

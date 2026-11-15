@@ -131,8 +131,8 @@ Nota: dentro de uma única transação a linha fica bloqueada pela própria tran
 
 ## 10. Questões em aberto
 
-1. **Âmbito de tenant**: a chave deve incluir `tenant_id` (app multi-tenant) ou fica `(source, key)`?
-2. Comportamento por omissão quando o extractor não encontra chave (rejeitar vs processar sem idempotência).
-3. Defaults de retenção de `response_body` e limite de tamanho.
+1. **Tenant**: a chave deve incluir `tenant_id` (app multi-tenant) ou fica `(source, key)`?
+2. **Chave ausente**: comportamento por omissão quando o extractor não encontra chave (rejeitar vs processar sem idempotência).
+3. **Retenção**: defaults de retenção de `response_body` e limite de tamanho.
 4. Registry das imagens de release (GHCR?).
 5. Auth do admin (v0.2).

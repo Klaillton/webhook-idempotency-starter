@@ -10,9 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 class RecordEqualityTest {
@@ -32,12 +34,7 @@ class RecordEqualityTest {
         assertNotEquals(result, new WebhookResult(new byte[] {1, 2}));
         assertNotEquals(result, new WebhookResult(null));
         assertFalse(result.equals("WebhookResult"));
-
-        input[0] = 9;
-        assertArrayEquals(new byte[] {1, 2, 3}, result.body());
-        var leaked = result.body();
-        leaked[0] = 8;
-        assertArrayEquals(new byte[] {1, 2, 3}, result.body());
+        assertBytesAreCopied(input, result::body);
 
         var empty = new WebhookResult(null);
         assertArrayEquals(new byte[0], empty.body());
@@ -47,7 +44,8 @@ class RecordEqualityTest {
 
     @Test
     void shouldMatchWebhookEventWhenEveryFieldMatches() {
-        var event = new WebhookEvent("github", "delivery-1001", BODY, "fp");
+        var input = new byte[] {1, 2, 3};
+        var event = new WebhookEvent("github", "delivery-1001", input, "fp");
         var copy = new WebhookEvent("github", "delivery-1001", new byte[] {1, 2, 3}, "fp");
 
         assertEquals(copy, event);
@@ -61,14 +59,14 @@ class RecordEqualityTest {
         assertNotEquals(event, new WebhookEvent("github", "delivery-1001", new byte[] {9}, "fp"));
         assertNotEquals(event, new WebhookEvent("github", "delivery-1001", BODY, "other"));
         assertFalse(event.equals(null));
-        event.body()[0] = 9;
-        assertArrayEquals(BODY, event.body());
+        assertBytesAreCopied(input, event::body);
     }
 
     @Test
     void shouldMatchSigningSecretWhenTheKeyAndExpiryMatch() {
         var expires = UNTIL.plusSeconds(5);
-        var secret = new SigningSecret(BODY, expires);
+        var input = new byte[] {1, 2, 3};
+        var secret = new SigningSecret(input, expires);
         var copy = new SigningSecret(new byte[] {1, 2, 3}, expires);
 
         assertEquals(copy, secret);
@@ -81,8 +79,7 @@ class RecordEqualityTest {
         assertTrue(secret.activeAt(expires));
         assertFalse(secret.activeAt(expires.plusNanos(1)));
         assertTrue(new SigningSecret(BODY, null).activeAt(expires));
-        secret.key()[0] = 9;
-        assertArrayEquals(BODY, secret.key());
+        assertBytesAreCopied(input, secret::key);
     }
 
     @Test
@@ -109,14 +106,14 @@ class RecordEqualityTest {
         assertNotEquals(record, recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, BODY));
         assertFalse(record.equals(null));
 
-        var stored = recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.COMPLETED, UNTIL, BODY);
+        var response = new byte[] {1, 2, 3};
+        var stored = recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.COMPLETED, UNTIL, response);
         assertEquals(
                 "IdempotencyRecord[source=github, key=delivery-1001, fingerprint=fp, status=COMPLETED, lockedUntil="
                         + UNTIL
                         + ", responseLength=3]",
                 stored.toString());
-        stored.responseBody()[0] = 9;
-        assertArrayEquals(BODY, stored.responseBody());
+        assertBytesAreCopied(response, stored::responseBody);
 
         var taken = stored.takenOver("next", UNTIL.plusSeconds(5));
         assertEquals("next", taken.fingerprint());
@@ -132,7 +129,19 @@ class RecordEqualityTest {
 
     @Test
     void shouldMatchIntakeCommandWhenEveryFieldMatches() {
-        var command = command("github", "delivery-1001", BODY, 8, SignatureScheme.GITHUB, "sha256=ab", Duration.ofMinutes(5), Duration.ofMinutes(2));
+        var body = new byte[] {1, 2, 3};
+        var secrets = new ArrayList<SigningSecret>();
+        secrets.add(new SigningSecret(new byte[] {4}, null));
+        var command = new IntakeCommand(
+                "github",
+                "delivery-1001",
+                body,
+                8,
+                SignatureScheme.GITHUB,
+                "sha256=ab",
+                secrets,
+                Duration.ofMinutes(5),
+                Duration.ofMinutes(2));
         var copy = command("github", "delivery-1001", new byte[] {1, 2, 3}, 8, SignatureScheme.GITHUB, "sha256=ab", Duration.ofMinutes(5), Duration.ofMinutes(2));
 
         assertEquals(copy, command);
@@ -165,8 +174,10 @@ class RecordEqualityTest {
         assertNotEquals(command, command("github", "delivery-1001", BODY, 8, SignatureScheme.GITHUB, "sha256=ab", Duration.ofMinutes(1), Duration.ofMinutes(2)));
         assertNotEquals(command, command("github", "delivery-1001", BODY, 8, SignatureScheme.GITHUB, "sha256=ab", Duration.ofMinutes(5), Duration.ofMinutes(3)));
         assertFalse(command.equals("command"));
-        command.body()[0] = 9;
-        assertArrayEquals(BODY, command.body());
+        assertBytesAreCopied(body, command::body);
+        secrets.add(new SigningSecret(new byte[] {7}, null));
+        assertEquals(1, command.secrets().size());
+        assertArrayEquals(new byte[] {4}, command.secrets().getFirst().key());
     }
 
     @Test
@@ -180,7 +191,8 @@ class RecordEqualityTest {
 
     @Test
     void shouldMatchCompletedDecisionWhenTheBodyAndReplayFlagMatch() {
-        var completed = new IntakeDecision.Completed(BODY, false);
+        var input = new byte[] {1, 2, 3};
+        var completed = new IntakeDecision.Completed(input, false);
         var copy = new IntakeDecision.Completed(new byte[] {1, 2, 3}, false);
 
         assertEquals(copy, completed);
@@ -189,8 +201,7 @@ class RecordEqualityTest {
         assertNotEquals(completed, new IntakeDecision.Completed(new byte[] {9}, false));
         assertNotEquals(completed, new IntakeDecision.Completed(BODY, true));
         assertFalse(completed.equals(new IntakeDecision.MissingKey()));
-        completed.body()[0] = 9;
-        assertArrayEquals(BODY, completed.body());
+        assertBytesAreCopied(input, completed::body);
 
         var empty = new IntakeDecision.Completed(null, true);
         assertArrayEquals(new byte[0], empty.body());
@@ -235,6 +246,14 @@ class RecordEqualityTest {
                 List.of(new SigningSecret(new byte[] {4}, null)),
                 tolerance,
                 lease);
+    }
+
+    private static void assertBytesAreCopied(byte[] input, Supplier<byte[]> stored) {
+        input[0] = 9;
+        assertArrayEquals(new byte[] {1, 2, 3}, stored.get());
+        var leaked = stored.get();
+        leaked[0] = 8;
+        assertArrayEquals(new byte[] {1, 2, 3}, stored.get());
     }
 
     private static int expectedCommandHash(IntakeCommand command) {

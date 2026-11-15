@@ -14,7 +14,7 @@ This change keeps the domain rules and adds the Postgres store, Flyway, and the 
 ## Contradictions
 
 - Architecture section 7 says a replay can later return only the status after response retention. This change stores the handler bytes and replays them. `expires_at` stays null. Retention is not implemented.
-- Architecture section 4 specifies expired-lease takeover and rollback when the handler fails. Both run in the app transaction. The OpenAPI and the Gherkin do not mention them.
+- Architecture section 4 specifies expired-lease takeover and rollback when the handler fails. Both run in the app transaction. The OpenAPI mentions neither. Handler rollback and overlapping deliveries are now Gherkin scenarios (`s4-gherkin.md`). Expired-lease takeover is still not a scenario.
 - `docs/sdd/Observability.md` still says `GET /health`. The sample app serves `GET /actuator/health`.
 
 ## Missing AC
