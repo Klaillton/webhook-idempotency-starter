@@ -54,7 +54,7 @@ O chat não é `ALLOW_SPEC_EDIT=1`, não é um label do GitHub e não é `allowS
 ## O que fica fora desta PR e desta autorização de código
 
 - **openapi-diff.** O runner pinado em `481ead9` não o executa. Subir o pin mexe em `.github/**` e é outra policy change. O ADR-0002 declara a regra ativa para quando o runner existir. `docs/gauntlet-s4-openapi-diff.md` mantém o motivo de skip: o OpenAPI v0.1 ainda não é baseline estável. Este repositório não liga o gate para “fechar” esse ponto.
-- **Chave ausente, tenant e retenção.** Fechados no ADR-0004. O 400, a coluna `tenant_id` e o `expires_at` ainda não estão no código desta nota.
+- **Chave ausente, tenant e retenção.** Fechados no ADR-0004. O 400 da chave ausente está no contrato e no adaptador. A coluna `tenant_id` e o `expires_at` preenchido ainda não estão no código.
 - **Três mutantes equivalentes do PIT.** `docs/gauntlet-s3-pendencias.md` descreve-os: `skipArray`, `decodeEscape` e `unicode`. O ramo morto de `skipObject` saiu com o código, e esse mutante saiu com ele. A aprovação com motivo está no ADR-0003. O PIT não os marca como mortos e o `pom.xml` não os exclui.
 - **Surefire `tests="0"` no Cucumber.** Em 2026-11-15, `mvn -pl sample-app -am test` no main terminou com BUILD SUCCESS. O Flyway aplicou a v1. Os 10 cenários passaram no log, incluindo o rollback com segunda entrega e o redelivery concorrente. O XML do `CucumberTestEngine` continua com `tests="0"`. Isso não bloqueia o CRAP. Não há módulo `e2e/` separado. O módulo de e2e do roadmap de produto continua à espera do ADD-POLY S4 do kit.
 

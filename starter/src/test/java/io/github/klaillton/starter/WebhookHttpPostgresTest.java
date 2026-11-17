@@ -3,7 +3,6 @@ package io.github.klaillton.starter;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.klaillton.core.intake.BodyLimit;
@@ -118,12 +117,12 @@ class WebhookHttpPostgresTest {
     }
 
     @Test
-    void shouldLeaveStoreUntouchedWhenKeyIsMissing() throws Exception {
+    void shouldRejectWhenTheIdempotencyKeyIsMissing() throws Exception {
         var response = post("github", null, PUSH, "X-Hub-Signature-256", github(PUSH, IntakeFixtures.GITHUB_SECRET));
 
-        assertNotEquals(200, response.statusCode());
-        assertNotEquals(400, response.statusCode());
+        assertEquals(400, response.statusCode());
         assertEquals(0, countRows());
+        assertEquals(0, handler.calls());
     }
 
     @Test

@@ -38,7 +38,7 @@ Com exatamente quatro dígitos hex não há aspas de fecho a seguir, e `readStri
 
 Fechadas no ADR-0004. O ficheiro `docs/adr/ADR-0003-product-decisions-v0.1.md` ficou superseded porque o número 0003 já era a aprovação dos mutantes.
 
-- **Chave ausente.** HTTP 400, sem escrita no store, antes da transação. Nenhum source processa sem idempotência na v0.1. O código ainda não devolve esse 400.
+- **Chave ausente.** HTTP 400, sem escrita no store, antes da transação. Nenhum source processa sem idempotência na v0.1. O contrato e o adaptador devolvem esse 400.
 - **Tenant.** A chave é `(source, key)`. A coluna `tenant_id` nullable ainda não está na migration.
 - **Retenção.** `expires_at = created_at + 7 dias`. Corpo `NULL` após 24 horas ou acima de 64 KB, com a linha `COMPLETED`. O replay após 24 horas devolve o estado original com corpo vazio. O job de limpeza fica para a S4 do roadmap. `expires_at` no código ainda fica null.
 

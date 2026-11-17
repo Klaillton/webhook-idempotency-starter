@@ -67,11 +67,7 @@ public class WebhookController {
     }
 
     private void write(HttpServletResponse response, IntakeDecision decision) throws IOException {
-        var status = IntakeDecision.httpStatus(decision);
-        if (status.isEmpty()) {
-            throw new MissingIdempotencyKey();
-        }
-        response.setStatus(status.getAsInt());
+        response.setStatus(IntakeDecision.httpStatus(decision).getAsInt());
         if (decision instanceof IntakeDecision.InProgress inProgress) {
             response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(inProgress.retryAfterSeconds()));
         }
