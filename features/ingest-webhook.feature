@@ -1,5 +1,4 @@
 # Draft. Restates the approved OpenAPI operation ingestWebhook.
-# Missing idempotency key stays unspecified.
 
 Feature: Webhook intake
   As an application
@@ -20,6 +19,14 @@ Feature: Webhook intake
     When the provider delivers the same body for that delivery again
     Then the stored handler result is returned
     And the handler does not run again
+
+  @op:ingestWebhook @unhappy
+  Scenario: a verified delivery without an idempotency key is rejected
+    Given a source "github" with a valid signature
+    And the delivery has no idempotency key
+    When the provider delivers that webhook
+    Then the delivery is rejected with HTTP 400
+    And no idempotency record is stored
 
   @op:ingestWebhook @unhappy
   Scenario: a bad signature is rejected before idempotency

@@ -4,8 +4,8 @@ import java.util.Arrays;
 import java.util.OptionalInt;
 
 /**
- * Result of one intake attempt. {@link MissingKey} has no HTTP status: the
- * contract does not define that response.
+ * Result of one intake attempt. {@link MissingKey} is HTTP 400: the extractor
+ * found no key, and the store is not written.
  */
 public sealed interface IntakeDecision
         permits IntakeDecision.Completed, IntakeDecision.Rejected, IntakeDecision.InProgress, IntakeDecision.MissingKey {
@@ -55,7 +55,7 @@ public sealed interface IntakeDecision
             case Completed ignored -> OptionalInt.of(200);
             case Rejected(var reason) -> OptionalInt.of(status(reason));
             case InProgress ignored -> OptionalInt.of(409);
-            case MissingKey ignored -> OptionalInt.empty();
+            case MissingKey ignored -> OptionalInt.of(400);
         };
     }
 

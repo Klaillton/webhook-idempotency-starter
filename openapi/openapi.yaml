@@ -17,8 +17,9 @@ paths:
         The fingerprint is SHA-256 of the raw request bytes, taken before
         any parse. Which header carries the signature, and which header or
         field carries the idempotency key, depends on the source.
-        This operation does not define the response when the configured
-        extractor finds no idempotency key.
+        When the configured extractor finds no idempotency key, the response
+        is 400 and the store is not written. That check follows the signature
+        check and happens before the idempotency transaction.
       parameters:
         - $ref: "#/components/parameters/Source"
         - $ref: "#/components/parameters/IdempotencyKey"
@@ -41,6 +42,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HandlerResult"
+        "400":
+          description: |
+            The configured extractor found no idempotency key. The signature
+            had already been accepted. Nothing was written to the store.
         "401":
           description: |
             The signature or the timestamp check failed. Idempotency was

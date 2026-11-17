@@ -53,7 +53,7 @@ public interface WebhookHandler {
 Fluxo por pedido (`POST /webhooks/{source}`):
 1. Limite de tamanho do body (por source) → `413` se exceder.
 2. Verificação HMAC + tolerância de timestamp/nonce (§6) → `401` se falhar.
-3. Extractor obtém a chave; sem chave → comportamento configurável por source (rejeitar ou processar sem idempotência), **sem 400 genérico**.
+3. Extractor obtém a chave. Sem chave → `400`, sem escrita no store, antes da transação (ADR-0004). Nenhum source processa sem idempotência na v0.1.
 4. Abre transação (`@Transactional` da app):
    - `INSERT ... ON CONFLICT DO NOTHING` em `IN_PROGRESS` com `locked_until = now() + lease`.
    - Se já existe: `COMPLETED` + mesmo fingerprint → **replay** da resposta guardada; fingerprint diferente → `422`; `IN_PROGRESS` com lease válido → `409` + `Retry-After`; lease expirado → **takeover** (`UPDATE ... WHERE locked_until < now()`).
@@ -82,7 +82,7 @@ Nota: dentro de uma única transação a linha fica bloqueada pela própria tran
 | Stripe | campo do body `id` (event id) |
 | Genérico | header `Idempotency-Key` (é só mais um extractor) |
 
-Âmbito da chave: `(source, key)` — ver questão de tenant (§10).
+Âmbito da chave: `(source, key)` (ADR-0004). A coluna `tenant_id text` nullable entra na schema e fica sem uso na v0.1.
 
 **Fingerprint:** SHA-256 dos bytes crus recebidos (antes de qualquer parsing).
 
@@ -95,9 +95,9 @@ Nota: dentro de uma única transação a linha fica bloqueada pela própria tran
 
 `idempotency_record(source, key, fingerprint, status, locked_until, response_code, response_body, created_at, expires_at)` — PK `(source, key)`.
 
-- **TTL por source ≥ janela de retry do provider** (default 7 dias; Stripe reenvia até 3 dias).
-- `response_body`: limite de tamanho (truncar/omitir acima de X KB) e **retenção própria** mais curta que a chave (pode conter PII); após retenção fica `NULL` e o replay devolve só status. Política documentada em `docs/sdd/Security.md`.
-- Limpeza por job agendado (batch delete por `expires_at`).
+- **TTL por source ≥ janela de retry do provider** (default 7 dias; Stripe reenvia até 3 dias). `expires_at = created_at + 7 dias` (ADR-0004).
+- `response_body`: acima de 64 KB grava-se `NULL` e a linha fica `COMPLETED`. Após 24 horas o corpo passa a `NULL` e o replay devolve o estado original com corpo vazio. A linha permanece.
+- O job que apaga linhas com `expires_at` vencido fica para a S4 do roadmap.
 
 ## 8. Endpoints (esboço — fonte de verdade: `openapi.yaml`)
 
@@ -129,10 +129,15 @@ Nota: dentro de uma única transação a linha fica bloqueada pela própria tran
 
 **Redis (nota):** só como adapter opcional futuro de `IdempotencyStore`. Se existir: `maxmemory-policy noeviction` ou `volatile-*`, hash + TTL gravados atomicamente (Lua/`MULTI`), e o lock Redis é **eficiência, não correção** — perde-se a garantia de mesma transação.
 
-## 10. Questões em aberto
+## 10. Decisões fechadas e o que continua aberto
 
-1. **Tenant**: a chave deve incluir `tenant_id` (app multi-tenant) ou fica `(source, key)`?
-2. **Chave ausente**: comportamento por omissão quando o extractor não encontra chave (rejeitar vs processar sem idempotência).
-3. **Retenção**: defaults de retenção de `response_body` e limite de tamanho.
+Fechado para v0.1 no ADR-0004:
+
+1. **Tenant.** A chave fica `(source, key)`. `tenant_id text` nullable entra na schema e não é usado.
+2. **Chave ausente.** HTTP 400, sem escrita no store, antes da transação. Sem override por source na v0.1.
+3. **Retenção.** `expires_at` a 7 dias, corpo vazio após 24 horas ou acima de 64 KB, linha `COMPLETED`. O job de limpeza fica para a S4 do roadmap.
+
+Ainda em aberto:
+
 4. Registry das imagens de release (GHCR?).
 5. Auth do admin (v0.2).

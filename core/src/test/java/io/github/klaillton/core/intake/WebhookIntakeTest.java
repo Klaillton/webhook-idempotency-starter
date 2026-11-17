@@ -133,7 +133,7 @@ class WebhookIntakeTest {
         var decision = intake.receive(command(body("{}"), null, github(body("{}"))), event -> new WebhookResult(RESULT));
 
         assertInstanceOf(IntakeDecision.MissingKey.class, decision);
-        assertTrue(IntakeDecision.httpStatus(decision).isEmpty());
+        assertEquals(400, IntakeDecision.httpStatus(decision).orElseThrow());
         assertTrue(store.find("github", "delivery-1001").isEmpty());
     }
 

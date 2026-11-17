@@ -109,6 +109,11 @@ public class IntakeSteps {
         assertEquals(200, response.statusCode());
     }
 
+    @Given("the delivery has no idempotency key")
+    public void noIdempotencyKey() {
+        deliveryId = null;
+    }
+
     @Given("a source {string} whose signature does not verify")
     public void badSignature(String source) {
         this.source = source;
@@ -266,6 +271,12 @@ public class IntakeSteps {
         assertEquals(0, count);
     }
 
+    @Then("the delivery is rejected with HTTP 400")
+    public void missingKey() {
+        assertEquals(400, response.statusCode());
+        assertEquals(0, handler.deliveriesHandled());
+    }
+
     @Then("the delivery is rejected with HTTP 422 as a fingerprint mismatch")
     public void fingerprintMismatch() {
         assertEquals(422, response.statusCode());
@@ -340,8 +351,10 @@ public class IntakeSteps {
     private HttpResponse<byte[]> sendRequest() throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/webhooks/" + source))
                 .header("Content-Type", "application/json")
-                .header("X-GitHub-Delivery", deliveryId)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body));
+        if (deliveryId != null) {
+            builder.header("X-GitHub-Delivery", deliveryId);
+        }
         if (sign) {
             builder.header("X-Hub-Signature-256", github(body));
         } else {
