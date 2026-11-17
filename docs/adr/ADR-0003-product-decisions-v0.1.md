@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-11-17
+Superseded by ADR-0004 — 2026-11-17
+
+The accepted text is `docs/adr/ADR-0004-product-decisions-v0.1.md`. This file stays so the ADR is not deleted. Its number collided with the PIT equivalent-mutant approval.
 
 ## Context
 
@@ -38,3 +40,7 @@ Section 10 of ARCHITECTURE.md listed three open product questions that blocked c
 - Schema gains a nullable `tenant_id` column; primary key stays `(source, key)`.
 - `expires_at` is no longer left null by default; body nulling after 24 h is the defined policy.
 - Any change to these rules requires a new ADR and `policy-change-approved`.
+
+## Discarded
+
+- Leaving this file as a second accepted ADR-0003. The number already identified the PIT equivalent-mutant approval. The product decisions live in ADR-0004.

@@ -48,7 +48,7 @@ Layers: domain (pure) → adapters (may depend on domain) → starter (autoconfi
 
 - A pom snippet with `<mutationThreshold>` or `<coverageThreshold>` is not usable. Threshold tags and any pom edit are policy changes.
 - openapi-diff still has no runner in the pinned kit (`481ead9`). The ADR says the rule is active when that runner exists. This slice does not enable it and does not edit `gauntlet.config.json`.
-- Product decisions still open in ARCHITECTURE section 10: missing idempotency key, tenant, response retention. They do not block this gate.
+- Product decisions for missing key, tenant, and retention are closed in ADR-0004. They do not belong to this gate.
 - Sample-app Cucumber on `main` (10 scenarios, real Postgres, Flyway v1) passed on 2026-11-15. Surefire still writes `tests="0"` for `CucumberTestEngine`. There is no separate `e2e/` module. `spring.flyway.enabled=true` is on `main` and is merged into this branch.
 
 These three gates do not depend on sample-app. The e2e above was re-run so the "existing" claim in ADR-0002 is checked, not assumed.
