@@ -61,7 +61,7 @@ public final class WebhookIntake {
         var existing = store.find(command.source(), command.key());
         if (existing.isEmpty()) {
             var lockedUntil = clock.instant().plus(command.lease());
-            if (!store.insertInProgress(command.source(), command.key(), fingerprint, lockedUntil)) {
+            if (!store.insertInProgress(command.source(), command.key(), fingerprint, lockedUntil, clock.instant())) {
                 return null;
             }
             return runHandler(command, handler, fingerprint, lockedUntil);
@@ -73,7 +73,7 @@ public final class WebhookIntake {
             IntakeCommand command, WebhookHandler handler, String fingerprint, IdempotencyRecord existing) {
         if (existing.status() == IdempotencyRecord.Status.COMPLETED) {
             if (existing.fingerprint().equals(fingerprint)) {
-                return new IntakeDecision.Completed(existing.responseBody(), true);
+                return replay(existing);
             }
             return new IntakeDecision.Rejected(IntakeDecision.Reason.FINGERPRINT);
         }
@@ -97,10 +97,20 @@ public final class WebhookIntake {
             store.deleteInProgress(command.source(), command.key(), lockedUntil);
             throw ex;
         }
-        if (!store.complete(command.source(), command.key(), lockedUntil, produced)) {
+        var stored = ResponseRetention.bodyToStore(produced);
+        if (!store.complete(command.source(), command.key(), lockedUntil, stored)) {
             throw new IllegalStateException("in-progress delivery disappeared before completion");
         }
         return new IntakeDecision.Completed(produced, false);
+    }
+
+    private IntakeDecision replay(IdempotencyRecord existing) {
+        var now = clock.instant();
+        var stored = existing.responseBody();
+        if (ResponseRetention.shouldClearStoredBody(existing.createdAt(), stored, now)) {
+            store.clearStoredBody(existing.source(), existing.key());
+        }
+        return new IntakeDecision.Completed(ResponseRetention.replayBody(existing.createdAt(), stored, now), true);
     }
 
     /**

@@ -6,8 +6,11 @@ info:
     HTTP contract for the Spring Boot starter intake (v0.1).
     The starter verifies the source signature before it touches idempotency.
     A completed delivery with the same raw-body fingerprint is replayed
-    with the stored handler result. Admin routes and asynchronous 202
-    responses are out of scope for this version.
+    with the stored handler result. A replay stays HTTP 200 with an empty
+    body when that stored body is older than 24 hours or was larger than
+    64 KB. The row stays completed. expires_at is created_at plus 7 days.
+    This version does not delete expired rows. Admin routes and
+    asynchronous 202 responses are out of scope.
 paths:
   /webhooks/{source}:
     post:
@@ -38,6 +41,8 @@ paths:
           description: |
             Handler result for this delivery, or the stored result when the
             same source, key, and raw-body fingerprint already completed.
+            The body is empty when the stored handler result is older than
+            24 hours or was above 64 KB. The status stays 200.
           content:
             application/json:
               schema:

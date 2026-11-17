@@ -1,6 +1,7 @@
 package io.github.klaillton.sampleapp.e2e;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.cucumber.java.Before;
@@ -10,6 +11,7 @@ import io.cucumber.java.en.When;
 import io.cucumber.spring.ScenarioScope;
 import io.github.klaillton.core.intake.BodyLimit;
 import io.github.klaillton.core.intake.Fingerprint;
+import io.github.klaillton.core.intake.ResponseRetention;
 import io.github.klaillton.sampleapp.SampleWebhookHandler;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -18,6 +20,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.time.Clock;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -84,6 +88,20 @@ public class IntakeSteps {
     @Given("the handler fails the next delivery")
     public void failNextDelivery() {
         handler.failNextDelivery();
+    }
+
+    @Given("the next handler result is larger than 64 KB")
+    public void oversizedResult() {
+        handler.produceOversizedResult();
+    }
+
+    @Given("the stored response is 24 hours old")
+    public void storedResponseIsOneDayOld() {
+        jdbc.update(
+                "UPDATE idempotency_record SET created_at = ? WHERE source = ? AND key = ?",
+                clock.instant().minus(ResponseRetention.BODY).truncatedTo(ChronoUnit.MICROS).atOffset(ZoneOffset.UTC),
+                source,
+                deliveryId);
     }
 
     @Given("a source {string} with a valid signature")
@@ -230,6 +248,30 @@ public class IntakeSteps {
     public void storedCompleted() {
         assertEquals("COMPLETED", statusOf());
         assertEquals(new String(SampleWebhookHandler.ACCEPTED, StandardCharsets.UTF_8), bodyText(storedBody()));
+    }
+
+    @Then("the idempotency row expires seven days after it was created")
+    public void expiresInSevenDays() {
+        var created = columnInstant("created_at");
+        assertEquals(created.plus(ResponseRetention.RECORD), columnInstant("expires_at"));
+    }
+
+    @Then("the caller receives the handler result")
+    public void callerReceivesHandlerResult() {
+        assertEquals(200, response.statusCode());
+        assertEquals(ResponseRetention.MAX_STORED_BODY_BYTES + 1, response.body().length);
+    }
+
+    @Then("the delivery is completed with an empty stored body")
+    public void completedWithoutStoredBody() {
+        assertEquals("COMPLETED", statusOf());
+        assertNull(storedBody());
+    }
+
+    @Then("the replay body is empty")
+    public void replayBodyIsEmpty() {
+        assertEquals(200, response.statusCode());
+        assertEquals(0, response.body().length);
     }
 
     @Then("the handler does not run again")
@@ -381,6 +423,15 @@ public class IntakeSteps {
                 .GET()
                 .build();
         return http.send(request, HttpResponse.BodyHandlers.ofByteArray());
+    }
+
+    private Instant columnInstant(String column) {
+        var sql = switch (column) {
+            case "created_at" -> "SELECT created_at FROM idempotency_record WHERE source = ? AND key = ?";
+            case "expires_at" -> "SELECT expires_at FROM idempotency_record WHERE source = ? AND key = ?";
+            default -> throw new IllegalArgumentException(column);
+        };
+        return jdbc.queryForObject(sql, OffsetDateTime.class, source, deliveryId).toInstant();
     }
 
     private String statusOf() {

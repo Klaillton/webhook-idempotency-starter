@@ -40,7 +40,7 @@ Fechadas no ADR-0004. O ficheiro `docs/adr/ADR-0003-product-decisions-v0.1.md` f
 
 - **Chave ausente.** HTTP 400, sem escrita no store, antes da transação. Nenhum source processa sem idempotência na v0.1. O contrato e o adaptador devolvem esse 400.
 - **Tenant.** A chave é `(source, key)`. A coluna `tenant_id` nullable ainda não está na migration.
-- **Retenção.** `expires_at = created_at + 7 dias`. Corpo `NULL` após 24 horas ou acima de 64 KB, com a linha `COMPLETED`. O replay após 24 horas devolve o estado original com corpo vazio. O job de limpeza fica para a S4 do roadmap. `expires_at` no código ainda fica null.
+- **Retenção.** `expires_at = created_at + 7 dias`. Corpo `NULL` após 24 horas ou acima de 64 KB, com a linha `COMPLETED`. O replay devolve o estado original com corpo vazio. A primeira resposta de um corpo acima de 64 KB ainda entrega os bytes do handler. O job que apaga linhas vencidas continua adiado. A coluna `tenant_id` continua de fora.
 
 ## CRAP nos métodos tocados
 

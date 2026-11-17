@@ -3,10 +3,12 @@ package io.github.klaillton.starter;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.klaillton.core.intake.BodyLimit;
 import io.github.klaillton.core.intake.Fingerprint;
+import io.github.klaillton.core.intake.ResponseRetention;
 import io.github.klaillton.starter.support.IntakeFixtures;
 import io.github.klaillton.starter.support.IntakeFixtures.EffectHandler;
 import io.github.klaillton.starter.support.IntakeTestApplication;
@@ -18,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.CompletableFuture;
@@ -228,6 +231,66 @@ class WebhookHttpPostgresTest {
     }
 
     @Test
+    void shouldSetExpiresAtSevenDaysAfterCreatedAt() throws Exception {
+        assertEquals(200, postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET).statusCode());
+
+        assertEquals(instant("created_at").plus(ResponseRetention.RECORD), instant("expires_at"));
+    }
+
+    @Test
+    void shouldReplayEmptyBodyWhenTheStoredResponseIs24HoursOld() throws Exception {
+        assertEquals(200, postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET).statusCode());
+        jdbc.update(
+                "UPDATE idempotency_record SET created_at = ? WHERE key = ?",
+                IntakeFixtures.FIXED.minus(ResponseRetention.BODY).atOffset(ZoneOffset.UTC),
+                "delivery-1001");
+
+        var replay = postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET);
+
+        assertEquals(200, replay.statusCode());
+        assertEquals(0, replay.body().length);
+        assertNull(storedBody("delivery-1001"));
+        assertEquals("COMPLETED", statusOf("delivery-1001"));
+        assertEquals(1, handler.calls());
+        assertEquals(1, countRows());
+    }
+
+    @Test
+    void shouldReplayWhenExpiresAtIsAlreadyPast() throws Exception {
+        assertEquals(200, postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET).statusCode());
+        jdbc.update(
+                "UPDATE idempotency_record SET created_at = ?, expires_at = ? WHERE key = ?",
+                IntakeFixtures.FIXED.minus(Duration.ofHours(1)).atOffset(ZoneOffset.UTC),
+                IntakeFixtures.FIXED.minus(Duration.ofDays(1)).atOffset(ZoneOffset.UTC),
+                "delivery-1001");
+
+        var replay = postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET);
+
+        assertEquals(200, replay.statusCode());
+        assertArrayEquals(IntakeFixtures.ACCEPTED, replay.body());
+        assertEquals(1, countRows());
+        assertEquals(1, handler.calls());
+    }
+
+    @Test
+    void shouldStoreNullAndReplayEmptyWhenHandlerResultExceeds64Kb() throws Exception {
+        handler.produceOversizedResult();
+
+        var first = postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET);
+
+        assertEquals(200, first.statusCode());
+        assertEquals(ResponseRetention.MAX_STORED_BODY_BYTES + 1, first.body().length);
+        assertNull(storedBody("delivery-1001"));
+        assertEquals("COMPLETED", statusOf("delivery-1001"));
+
+        var replay = postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET);
+
+        assertEquals(200, replay.statusCode());
+        assertEquals(0, replay.body().length);
+        assertEquals(1, handler.calls());
+    }
+
+    @Test
     void shouldRejectWhenSourceHasNoSignatureScheme() throws Exception {
         var response = post("custom", "delivery-1001", PUSH, "Idempotency-Key", "delivery-1001");
 
@@ -297,6 +360,16 @@ class WebhookHttpPostgresTest {
     private String fingerprintOf(String key) {
         return jdbc.queryForObject(
                 "SELECT fingerprint FROM idempotency_record WHERE key = ?", String.class, key);
+    }
+
+    private Instant instant(String column) {
+        var sql = switch (column) {
+            case "created_at" -> "SELECT created_at FROM idempotency_record WHERE key = ?";
+            case "expires_at" -> "SELECT expires_at FROM idempotency_record WHERE key = ?";
+            default -> throw new IllegalArgumentException(column);
+        };
+        var value = jdbc.queryForObject(sql, OffsetDateTime.class, "delivery-1001");
+        return value.toInstant();
     }
 
     private byte[] storedBody(String key) {

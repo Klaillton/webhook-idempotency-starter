@@ -2,6 +2,7 @@ package io.github.klaillton.starter.store;
 
 import io.github.klaillton.core.intake.IdempotencyRecord;
 import io.github.klaillton.core.intake.IdempotencyStore;
+import io.github.klaillton.core.intake.ResponseRetention;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -16,15 +17,21 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
 
     private static final String INSERT = """
             INSERT INTO idempotency_record
-                (source, key, fingerprint, status, locked_until, created_at)
-            VALUES (?, ?, ?, 'IN_PROGRESS', ?, CURRENT_TIMESTAMP)
+                (source, key, fingerprint, status, locked_until, created_at, expires_at)
+            VALUES (?, ?, ?, 'IN_PROGRESS', ?, ?, ?)
             ON CONFLICT (source, key) DO NOTHING
             """;
 
     private static final String FIND = """
-            SELECT source, key, fingerprint, status, locked_until, response_body
+            SELECT source, key, fingerprint, status, locked_until, response_body, created_at
             FROM idempotency_record
             WHERE source = ? AND key = ?
+            """;
+
+    private static final String CLEAR_BODY = """
+            UPDATE idempotency_record
+            SET response_body = NULL
+            WHERE source = ? AND key = ? AND status = 'COMPLETED' AND response_body IS NOT NULL
             """;
 
     private static final String TAKEOVER = """
@@ -61,8 +68,22 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
     }
 
     @Override
-    public boolean insertInProgress(String source, String key, String fingerprint, Instant lockedUntil) {
-        return jdbc.update(INSERT, source, key, fingerprint, utc(lockedUntil)) == 1;
+    public boolean insertInProgress(
+            String source, String key, String fingerprint, Instant lockedUntil, Instant createdAt) {
+        return jdbc.update(
+                        INSERT,
+                        source,
+                        key,
+                        fingerprint,
+                        utc(lockedUntil),
+                        utc(createdAt),
+                        utc(ResponseRetention.recordExpiresAt(createdAt)))
+                == 1;
+    }
+
+    @Override
+    public boolean clearStoredBody(String source, String key) {
+        return jdbc.update(CLEAR_BODY, source, key) == 1;
     }
 
     @Override
@@ -88,7 +109,16 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
                 rs.getString("fingerprint"),
                 status(rs.getString("status")),
                 utcInstant(rs.getObject("locked_until", OffsetDateTime.class)),
-                rs.getBytes("response_body"));
+                rs.getBytes("response_body"),
+                createdAt(rs));
+    }
+
+    private static Instant createdAt(ResultSet rs) throws SQLException {
+        var created = rs.getObject("created_at", OffsetDateTime.class);
+        if (created == null) {
+            throw new IllegalStateException("idempotency row has no created_at");
+        }
+        return utcInstant(created);
     }
 
     private static IdempotencyRecord.Status status(String value) {

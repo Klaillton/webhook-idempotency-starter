@@ -1,5 +1,6 @@
 package io.github.klaillton.starter.support;
 
+import io.github.klaillton.core.intake.ResponseRetention;
 import io.github.klaillton.core.intake.WebhookEvent;
 import io.github.klaillton.core.intake.WebhookHandler;
 import io.github.klaillton.core.intake.WebhookResult;
@@ -42,6 +43,7 @@ public class IntakeFixtures {
         private final AtomicInteger calls = new AtomicInteger();
         private final AtomicBoolean fail = new AtomicBoolean();
         private final AtomicBoolean block = new AtomicBoolean();
+        private final AtomicBoolean oversized = new AtomicBoolean();
         private volatile CountDownLatch entered = new CountDownLatch(1);
         private volatile CountDownLatch release = new CountDownLatch(1);
 
@@ -60,6 +62,9 @@ public class IntakeFixtures {
                 entered.countDown();
                 awaitRelease();
             }
+            if (oversized.compareAndSet(true, false)) {
+                return new WebhookResult(new byte[ResponseRetention.MAX_STORED_BODY_BYTES + 1]);
+            }
             return new WebhookResult(ACCEPTED);
         }
 
@@ -76,6 +81,11 @@ public class IntakeFixtures {
             block.set(true);
         }
 
+        /** The next handle returns one byte past the stored-body limit. */
+        public void produceOversizedResult() {
+            oversized.set(true);
+        }
+
         public void release() {
             release.countDown();
         }
@@ -88,6 +98,7 @@ public class IntakeFixtures {
             calls.set(0);
             fail.set(false);
             block.set(false);
+            oversized.set(false);
             entered = new CountDownLatch(1);
             release = new CountDownLatch(1);
         }

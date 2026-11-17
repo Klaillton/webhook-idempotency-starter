@@ -17,7 +17,8 @@ public final class MemoryIdempotencyStore implements IdempotencyStore {
     }
 
     @Override
-    public boolean insertInProgress(String source, String key, String fingerprint, Instant lockedUntil) {
+    public boolean insertInProgress(
+            String source, String key, String fingerprint, Instant lockedUntil, Instant createdAt) {
         synchronized (rows) {
             var id = new Key(source, key);
             if (rows.containsKey(id)) {
@@ -25,7 +26,8 @@ public final class MemoryIdempotencyStore implements IdempotencyStore {
             }
             rows.put(
                     id,
-                    new IdempotencyRecord(source, key, fingerprint, IdempotencyRecord.Status.IN_PROGRESS, lockedUntil, null));
+                    new IdempotencyRecord(
+                            source, key, fingerprint, IdempotencyRecord.Status.IN_PROGRESS, lockedUntil, null, createdAt));
             return true;
         }
     }
@@ -55,6 +57,21 @@ public final class MemoryIdempotencyStore implements IdempotencyStore {
                 return false;
             }
             rows.put(new Key(source, key), current.completed(responseBody));
+            return true;
+        }
+    }
+
+    @Override
+    public boolean clearStoredBody(String source, String key) {
+        synchronized (rows) {
+            var current = rows.get(new Key(source, key));
+            if (current == null || current.status() != IdempotencyRecord.Status.COMPLETED) {
+                return false;
+            }
+            if (current.responseBody() == null) {
+                return false;
+            }
+            rows.put(new Key(source, key), current.completed(null));
             return true;
         }
     }

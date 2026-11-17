@@ -11,7 +11,17 @@ public interface IdempotencyStore {
 
     Optional<IdempotencyRecord> find(String source, String key);
 
-    boolean insertInProgress(String source, String key, String fingerprint, Instant lockedUntil);
+    /**
+     * Insert the in-progress row. {@code createdAt} is the intake clock.
+     * The adapter stores {@code expires_at} as that instant plus seven days.
+     */
+    boolean insertInProgress(String source, String key, String fingerprint, Instant lockedUntil, Instant createdAt);
+
+    /**
+     * Drop the stored body of a completed row. The row stays completed.
+     * Returns false when the row is missing, not completed, or already has no body.
+     */
+    boolean clearStoredBody(String source, String key);
 
     /**
      * Replace an in-progress row only when its lease end is still {@code expectedLockedUntil}.
