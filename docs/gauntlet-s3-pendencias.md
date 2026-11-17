@@ -12,7 +12,7 @@ Três timeouts de laço infinito entram na conta de mortos do PIT. Não são uma
 
 ## Mutantes que continuam vivos
 
-O ADR-0002 só conta um mutante equivalente como morto depois de aprovação humana com o motivo registado. **Esta nota não é essa aprovação.** Os três abaixo ficam de fora dos 357. O score passa sem eles.
+O ADR-0002 só conta um mutante equivalente como morto depois de aprovação humana com o motivo registado. Essa aprovação é o ADR-0003. Esta nota continua a ser a descrição técnica. O PIT não os marca como mortos: o relatório segue **357 de 360** (99%). Com os três equivalentes aprovados, esse 99% cumpre o limiar de 80%.
 
 O ramo morto `if (!eat('{')) return false` de `skipObject` foi removido. `skipValue` só chama `skipObject` quando o carácter seguinte já é `{`. Esse mutante deixou de existir. O equivalente em `skipArray` mantém-se.
 
