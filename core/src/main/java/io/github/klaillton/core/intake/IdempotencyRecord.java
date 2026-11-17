@@ -2,6 +2,7 @@ package io.github.klaillton.core.intake;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Objects;
 
 public record IdempotencyRecord(
         String source,
@@ -9,7 +10,8 @@ public record IdempotencyRecord(
         String fingerprint,
         Status status,
         Instant lockedUntil,
-        byte[] responseBody) {
+        byte[] responseBody,
+        Instant createdAt) {
 
     public enum Status {
         IN_PROGRESS,
@@ -17,6 +19,7 @@ public record IdempotencyRecord(
     }
 
     public IdempotencyRecord {
+        createdAt = Objects.requireNonNull(createdAt, "createdAt");
         responseBody = responseBody == null ? null : responseBody.clone();
     }
 
@@ -26,35 +29,37 @@ public record IdempotencyRecord(
     }
 
     IdempotencyRecord takenOver(String newFingerprint, Instant newLockedUntil) {
-        return new IdempotencyRecord(source, key, newFingerprint, Status.IN_PROGRESS, newLockedUntil, null);
+        return new IdempotencyRecord(source, key, newFingerprint, Status.IN_PROGRESS, newLockedUntil, null, createdAt);
     }
 
     IdempotencyRecord completed(byte[] body) {
-        return new IdempotencyRecord(source, key, fingerprint, Status.COMPLETED, lockedUntil, body);
+        return new IdempotencyRecord(source, key, fingerprint, Status.COMPLETED, lockedUntil, body, createdAt);
     }
 
     @Override
     public boolean equals(Object other) {
-        if (!(other instanceof IdempotencyRecord(
-                String otherSource,
-                String otherKey,
-                String otherFingerprint,
-                Status otherStatus,
-                Instant otherLockedUntil,
-                byte[] otherResponse))) {
+        if (!(other instanceof IdempotencyRecord record)) {
             return false;
         }
-        return source.equals(otherSource)
-                && key.equals(otherKey)
-                && fingerprint.equals(otherFingerprint)
-                && status == otherStatus
-                && lockedUntil.equals(otherLockedUntil)
-                && Arrays.equals(responseBody, otherResponse);
+        return sameDelivery(record) && sameStoredResult(record);
+    }
+
+    private boolean sameDelivery(IdempotencyRecord other) {
+        return source.equals(other.source)
+                && key.equals(other.key)
+                && fingerprint.equals(other.fingerprint)
+                && status == other.status
+                && lockedUntil.equals(other.lockedUntil)
+                && createdAt.equals(other.createdAt);
+    }
+
+    private boolean sameStoredResult(IdempotencyRecord other) {
+        return Arrays.equals(responseBody, other.responseBody);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(source, key, fingerprint, status, lockedUntil, Arrays.hashCode(responseBody));
+        return Objects.hash(source, key, fingerprint, status, lockedUntil, createdAt, Arrays.hashCode(responseBody));
     }
 
     @Override
@@ -70,6 +75,8 @@ public record IdempotencyRecord(
                 + status
                 + ", lockedUntil="
                 + lockedUntil
+                + ", createdAt="
+                + createdAt
                 + ", responseLength="
                 + responseLength
                 + "]";

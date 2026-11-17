@@ -1,5 +1,6 @@
 package io.github.klaillton.sampleapp;
 
+import io.github.klaillton.core.intake.ResponseRetention;
 import io.github.klaillton.core.intake.WebhookEvent;
 import io.github.klaillton.core.intake.WebhookHandler;
 import io.github.klaillton.core.intake.WebhookResult;
@@ -11,8 +12,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.stereotype.Component;
 
 /**
- * Sample handler. The counter, the one-shot failure, and the hold let the Cucumber steps see a
- * replay, a rolled-back delivery, and two callers that overlap.
+ * Sample handler. The counter, the one-shot failure, the hold, and the oversized result let the
+ * Cucumber steps see a replay, a rolled-back delivery, two callers that overlap, and a body that
+ * is not stored.
  */
 @Component
 public final class SampleWebhookHandler implements WebhookHandler {
@@ -22,6 +24,7 @@ public final class SampleWebhookHandler implements WebhookHandler {
     private final AtomicInteger deliveriesHandled = new AtomicInteger();
     private final AtomicBoolean failNext = new AtomicBoolean();
     private final AtomicBoolean holdNext = new AtomicBoolean();
+    private final AtomicBoolean oversizedNext = new AtomicBoolean();
     private volatile CountDownLatch entered = new CountDownLatch(1);
     private volatile CountDownLatch release = new CountDownLatch(1);
 
@@ -33,6 +36,9 @@ public final class SampleWebhookHandler implements WebhookHandler {
         }
         if (holdNext.compareAndSet(true, false)) {
             hold();
+        }
+        if (oversizedNext.compareAndSet(true, false)) {
+            return new WebhookResult(new byte[ResponseRetention.MAX_STORED_BODY_BYTES + 1]);
         }
         return new WebhookResult(ACCEPTED);
     }
@@ -51,6 +57,11 @@ public final class SampleWebhookHandler implements WebhookHandler {
         holdNext.set(true);
     }
 
+    /** The next handle returns one byte past the stored-body limit. */
+    public void produceOversizedResult() {
+        oversizedNext.set(true);
+    }
+
     public void releaseHeldDelivery() {
         release.countDown();
     }
@@ -63,6 +74,7 @@ public final class SampleWebhookHandler implements WebhookHandler {
         deliveriesHandled.set(0);
         failNext.set(false);
         holdNext.set(false);
+        oversizedNext.set(false);
         release.countDown();
         entered = new CountDownLatch(1);
         release = new CountDownLatch(1);

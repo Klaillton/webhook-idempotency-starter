@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 class RecordEqualityTest {
 
     private static final Instant UNTIL = Instant.parse("2026-01-01T00:00:00Z");
+    private static final Instant CREATED = UNTIL.minusSeconds(5);
     private static final byte[] BODY = {1, 2, 3};
 
     @Test
@@ -85,9 +86,9 @@ class RecordEqualityTest {
     @Test
     void shouldMatchIdempotencyRecordWhenEveryFieldMatches() {
         var record = new IdempotencyRecord(
-                "github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null);
+                "github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null, CREATED);
         var copy = new IdempotencyRecord(
-                "github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null);
+                "github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null, CREATED);
 
         assertEquals(copy, record);
         assertEquals(record.hashCode(), copy.hashCode());
@@ -95,22 +96,27 @@ class RecordEqualityTest {
         assertEquals(
                 "IdempotencyRecord[source=github, key=delivery-1001, fingerprint=fp, status=IN_PROGRESS, lockedUntil="
                         + UNTIL
+                        + ", createdAt="
+                        + CREATED
                         + ", responseLength=0]",
                 record.toString());
         assertNull(record.responseBody());
-        assertNotEquals(record, recordWith("stripe", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null));
-        assertNotEquals(record, recordWith("github", "other", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null));
-        assertNotEquals(record, recordWith("github", "delivery-1001", "other", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null));
-        assertNotEquals(record, recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.COMPLETED, UNTIL, null));
-        assertNotEquals(record, recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL.plusSeconds(1), null));
-        assertNotEquals(record, recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, BODY));
+        assertNotEquals(record, recordWith("stripe", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null, CREATED));
+        assertNotEquals(record, recordWith("github", "other", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null, CREATED));
+        assertNotEquals(record, recordWith("github", "delivery-1001", "other", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null, CREATED));
+        assertNotEquals(record, recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.COMPLETED, UNTIL, null, CREATED));
+        assertNotEquals(record, recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL.plusSeconds(1), null, CREATED));
+        assertNotEquals(record, recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, BODY, CREATED));
+        assertNotEquals(record, recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.IN_PROGRESS, UNTIL, null, CREATED.plusSeconds(1)));
         assertFalse(record.equals(null));
 
         var response = new byte[] {1, 2, 3};
-        var stored = recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.COMPLETED, UNTIL, response);
+        var stored = recordWith("github", "delivery-1001", "fp", IdempotencyRecord.Status.COMPLETED, UNTIL, response, CREATED);
         assertEquals(
                 "IdempotencyRecord[source=github, key=delivery-1001, fingerprint=fp, status=COMPLETED, lockedUntil="
                         + UNTIL
+                        + ", createdAt="
+                        + CREATED
                         + ", responseLength=3]",
                 stored.toString());
         assertBytesAreCopied(response, stored::responseBody);
@@ -118,11 +124,13 @@ class RecordEqualityTest {
         var taken = stored.takenOver("next", UNTIL.plusSeconds(5));
         assertEquals("next", taken.fingerprint());
         assertEquals(UNTIL.plusSeconds(5), taken.lockedUntil());
+        assertEquals(CREATED, taken.createdAt());
         assertEquals(IdempotencyRecord.Status.IN_PROGRESS, taken.status());
         assertNull(taken.responseBody());
 
         var completed = record.completed(BODY);
         assertArrayEquals(BODY, completed.responseBody());
+        assertEquals(CREATED, completed.createdAt());
         assertEquals(IdempotencyRecord.Status.COMPLETED, completed.status());
         assertEquals("fp", completed.fingerprint());
     }
@@ -213,8 +221,14 @@ class RecordEqualityTest {
     }
 
     private static IdempotencyRecord recordWith(
-            String source, String key, String fingerprint, IdempotencyRecord.Status status, Instant lockedUntil, byte[] response) {
-        return new IdempotencyRecord(source, key, fingerprint, status, lockedUntil, response);
+            String source,
+            String key,
+            String fingerprint,
+            IdempotencyRecord.Status status,
+            Instant lockedUntil,
+            byte[] response,
+            Instant createdAt) {
+        return new IdempotencyRecord(source, key, fingerprint, status, lockedUntil, response, createdAt);
     }
 
     private static int expectedRecordHash(IdempotencyRecord record) {
@@ -224,6 +238,7 @@ class RecordEqualityTest {
                 record.fingerprint(),
                 record.status(),
                 record.lockedUntil(),
+                record.createdAt(),
                 Arrays.hashCode(record.responseBody()));
     }
 

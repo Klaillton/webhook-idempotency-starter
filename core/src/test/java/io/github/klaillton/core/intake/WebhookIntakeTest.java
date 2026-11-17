@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,7 +41,9 @@ class WebhookIntakeTest {
         assertFalse(completed.replay());
         assertArrayEquals(RESULT, completed.body());
         assertEquals(1, calls.get());
-        assertEquals(IdempotencyRecord.Status.COMPLETED, store.find("github", "delivery-1001").orElseThrow().status());
+        var stored = store.find("github", "delivery-1001").orElseThrow();
+        assertEquals(IdempotencyRecord.Status.COMPLETED, stored.status());
+        assertEquals(NOW, stored.createdAt());
         assertEquals(200, IntakeDecision.httpStatus(decision).orElseThrow());
     }
 
@@ -88,7 +91,7 @@ class WebhookIntakeTest {
     @Test
     void shouldReportWholeSecondsWhenLeaseIsStillValid() {
         var lockedUntil = NOW.plusSeconds(10).plusMillis(500);
-        store.insertInProgress("github", "delivery-1001", "old", lockedUntil);
+        store.insertInProgress("github", "delivery-1001", "old", lockedUntil, NOW);
         var payload = body("{}");
 
         var decision = intake.receive(command(payload, "delivery-1001", github(payload)), event -> {
@@ -158,7 +161,7 @@ class WebhookIntakeTest {
 
     @Test
     void shouldRunHandlerWhenLeaseHasExpired() {
-        store.insertInProgress("github", "delivery-1001", "old", NOW.minusSeconds(1));
+        store.insertInProgress("github", "delivery-1001", "old", NOW.minusSeconds(1), NOW);
         var calls = new AtomicInteger();
         var payload = body("{}");
 
@@ -227,8 +230,14 @@ class WebhookIntakeTest {
             }
 
             @Override
-            public boolean insertInProgress(String source, String key, String fingerprint, Instant lockedUntil) {
+            public boolean insertInProgress(
+                    String source, String key, String fingerprint, Instant lockedUntil, Instant createdAt) {
                 attempts.incrementAndGet();
+                return false;
+            }
+
+            @Override
+            public boolean clearStoredBody(String source, String key) {
                 return false;
             }
 
@@ -256,6 +265,89 @@ class WebhookIntakeTest {
 
         assertEquals("idempotency store did not settle", error.getMessage());
         assertEquals(3, attempts.get());
+    }
+
+    @Test
+    void shouldStoreNoBodyWhenTheHandlerResultExceeds64Kb() {
+        var oversized = new byte[ResponseRetention.MAX_STORED_BODY_BYTES + 1];
+        oversized[0] = 9;
+        var calls = new AtomicInteger();
+        var command = command(body("{}"), "delivery-1001", github(body("{}")));
+
+        var first = intake.receive(command, event -> {
+            calls.incrementAndGet();
+            return new WebhookResult(oversized);
+        });
+
+        var completed = assertInstanceOf(IntakeDecision.Completed.class, first);
+        assertFalse(completed.replay());
+        assertArrayEquals(oversized, completed.body());
+        assertNull(store.find("github", "delivery-1001").orElseThrow().responseBody());
+        assertEquals(IdempotencyRecord.Status.COMPLETED, store.find("github", "delivery-1001").orElseThrow().status());
+
+        var replay = intake.receive(command, event -> {
+            calls.incrementAndGet();
+            return new WebhookResult(RESULT);
+        });
+
+        var again = assertInstanceOf(IntakeDecision.Completed.class, replay);
+        assertTrue(again.replay());
+        assertEquals(0, again.body().length);
+        assertEquals(1, calls.get());
+    }
+
+    @Test
+    void shouldStoreTheHandlerResultWhenItIsExactly64Kb() {
+        var exact = new byte[ResponseRetention.MAX_STORED_BODY_BYTES];
+        var command = command(body("{}"), "delivery-1001", github(body("{}")));
+
+        intake.receive(command, event -> new WebhookResult(exact));
+
+        assertArrayEquals(exact, store.find("github", "delivery-1001").orElseThrow().responseBody());
+    }
+
+    @Test
+    void shouldReplayEmptyBodyWhenTheStoredResponseIs24HoursOld() {
+        var created = NOW.minus(ResponseRetention.BODY);
+        store.insertInProgress("github", "delivery-1001", Fingerprint.sha256Hex(body("{}")), NOW.plusSeconds(30), created);
+        assertTrue(store.complete("github", "delivery-1001", NOW.plusSeconds(30), RESULT));
+        var command = command(body("{}"), "delivery-1001", github(body("{}")));
+
+        var decision = intake.receive(command, event -> new WebhookResult(new byte[] {0}));
+
+        var replay = assertInstanceOf(IntakeDecision.Completed.class, decision);
+        assertTrue(replay.replay());
+        assertEquals(0, replay.body().length);
+        assertEquals(200, IntakeDecision.httpStatus(decision).orElseThrow());
+        var stored = store.find("github", "delivery-1001").orElseThrow();
+        assertNull(stored.responseBody());
+        assertEquals(IdempotencyRecord.Status.COMPLETED, stored.status());
+        assertEquals(created, stored.createdAt());
+    }
+
+    @Test
+    void shouldKeepTheStoredBodyWhenItIsJustUnder24HoursOld() {
+        var created = NOW.minus(ResponseRetention.BODY).plusNanos(1);
+        store.insertInProgress("github", "delivery-1001", Fingerprint.sha256Hex(body("{}")), NOW.plusSeconds(30), created);
+        assertTrue(store.complete("github", "delivery-1001", NOW.plusSeconds(30), RESULT));
+
+        var decision = intake.receive(command(body("{}"), "delivery-1001", github(body("{}"))), event -> new WebhookResult(new byte[] {0}));
+
+        var replay = assertInstanceOf(IntakeDecision.Completed.class, decision);
+        assertArrayEquals(RESULT, replay.body());
+        assertArrayEquals(RESULT, store.find("github", "delivery-1001").orElseThrow().responseBody());
+    }
+
+    @Test
+    void shouldKeepTheRowWhenTheRecordTtlHasPassed() {
+        var created = NOW.minus(ResponseRetention.RECORD).minusSeconds(1);
+        store.insertInProgress("github", "delivery-1001", Fingerprint.sha256Hex(body("{}")), NOW.plusSeconds(30), created);
+        assertTrue(store.complete("github", "delivery-1001", NOW.plusSeconds(30), RESULT));
+
+        var decision = intake.receive(command(body("{}"), "delivery-1001", github(body("{}"))), event -> new WebhookResult(new byte[] {0}));
+
+        assertTrue(assertInstanceOf(IntakeDecision.Completed.class, decision).replay());
+        assertEquals(IdempotencyRecord.Status.COMPLETED, store.find("github", "delivery-1001").orElseThrow().status());
     }
 
     @Test

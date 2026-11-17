@@ -12,6 +12,7 @@ Feature: Webhook intake
     When the provider delivers that webhook
     Then the handler result is returned
     And the delivery is stored as completed
+    And the idempotency row expires seven days after it was created
 
   @op:ingestWebhook @edge
   Scenario: the same delivery returns the stored result
@@ -77,3 +78,24 @@ Feature: Webhook intake
     Then both callers receive the handler result
     And the handler runs once
     And the delivery is stored as completed
+
+  @op:ingestWebhook @edge
+  Scenario: a stored response older than 24 hours replays with an empty body
+    Given a source "github" has completed delivery "delivery-1001"
+    And the stored response is 24 hours old
+    When the provider delivers the same body for that delivery again
+    Then the replay body is empty
+    And the delivery is completed with an empty stored body
+    And the handler does not run again
+
+  @op:ingestWebhook @edge
+  Scenario: a handler result above 64 KB is stored without a body
+    Given a source "github" with a valid signature
+    And delivery "delivery-1001" has not been seen
+    And the next handler result is larger than 64 KB
+    When the provider delivers that webhook
+    Then the caller receives the handler result
+    And the delivery is completed with an empty stored body
+    When the provider delivers the same body for that delivery again
+    Then the replay body is empty
+    And the handler does not run again
