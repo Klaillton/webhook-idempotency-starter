@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,6 +89,18 @@ class WebhookHttpPostgresTest {
         assertEquals(1, handler.calls());
         assertEquals("COMPLETED", statusOf("delivery-1001"));
         assertArrayEquals(IntakeFixtures.ACCEPTED, storedBody("delivery-1001"));
+    }
+
+    @Test
+    void shouldLeaveTenantIdNullAndOutOfThePrimaryKey() throws Exception {
+        assertEquals(200, postGithub("delivery-1001", PUSH, IntakeFixtures.GITHUB_SECRET).statusCode());
+
+        assertNull(jdbc.queryForObject(
+                "SELECT tenant_id FROM idempotency_record WHERE key = ?", String.class, "delivery-1001"));
+        assertEquals("YES", columnFact("is_nullable"));
+        assertEquals("text", columnFact("data_type"));
+        assertNull(columnFact("column_default"));
+        assertEquals(List.of("source", "key"), primaryKeyColumns());
     }
 
     @Test
@@ -360,6 +373,47 @@ class WebhookHttpPostgresTest {
     private String fingerprintOf(String key) {
         return jdbc.queryForObject(
                 "SELECT fingerprint FROM idempotency_record WHERE key = ?", String.class, key);
+    }
+
+    private String columnFact(String fact) {
+        var sql = switch (fact) {
+            case "is_nullable" -> """
+                    SELECT is_nullable
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'idempotency_record'
+                      AND column_name = 'tenant_id'
+                    """;
+            case "data_type" -> """
+                    SELECT data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'idempotency_record'
+                      AND column_name = 'tenant_id'
+                    """;
+            case "column_default" -> """
+                    SELECT column_default
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'idempotency_record'
+                      AND column_name = 'tenant_id'
+                    """;
+            default -> throw new IllegalArgumentException(fact);
+        };
+        return jdbc.queryForObject(sql, String.class);
+    }
+
+    private List<String> primaryKeyColumns() {
+        return jdbc.query(
+                """
+                SELECT a.attname
+                FROM pg_index i
+                JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY (i.indkey)
+                WHERE i.indrelid = 'idempotency_record'::regclass
+                  AND i.indisprimary
+                ORDER BY array_position(i.indkey, a.attnum)
+                """,
+                (rs, row) -> rs.getString(1));
     }
 
     private Instant instant(String column) {

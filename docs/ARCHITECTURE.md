@@ -82,7 +82,7 @@ Nota: dentro de uma única transação a linha fica bloqueada pela própria tran
 | Stripe | campo do body `id` (event id) |
 | Genérico | header `Idempotency-Key` (é só mais um extractor) |
 
-Âmbito da chave: `(source, key)` (ADR-0004). A coluna `tenant_id text` nullable entra na schema e fica sem uso na v0.1.
+Âmbito da chave: `(source, key)` (ADR-0004). A coluna `tenant_id text` nullable está na schema e fica sem uso na v0.1.
 
 **Fingerprint:** SHA-256 dos bytes crus recebidos (antes de qualquer parsing).
 
@@ -93,7 +93,7 @@ Nota: dentro de uma única transação a linha fica bloqueada pela própria tran
 
 ## 7. Store (Postgres)
 
-`idempotency_record(source, key, fingerprint, status, locked_until, response_code, response_body, created_at, expires_at)` — PK `(source, key)`.
+`idempotency_record(source, key, fingerprint, status, locked_until, response_code, response_body, created_at, expires_at, tenant_id)` — PK `(source, key)`. `tenant_id` fica `NULL` na v0.1.
 
 - **TTL por source ≥ janela de retry do provider** (default 7 dias; Stripe reenvia até 3 dias). `expires_at = created_at + 7 dias` (ADR-0004).
 - `response_body`: acima de 64 KB grava-se `NULL` e a linha fica `COMPLETED`. Após 24 horas o corpo passa a `NULL` e o replay devolve o estado original com corpo vazio. A linha permanece.
@@ -133,7 +133,7 @@ Nota: dentro de uma única transação a linha fica bloqueada pela própria tran
 
 Fechado para v0.1 no ADR-0004:
 
-1. **Tenant.** A chave fica `(source, key)`. `tenant_id text` nullable entra na schema e não é usado.
+1. **Tenant.** A chave fica `(source, key)`. `tenant_id text` nullable está na schema e não é usado.
 2. **Chave ausente.** HTTP 400, sem escrita no store, antes da transação. Sem override por source na v0.1.
 3. **Retenção.** `expires_at` a 7 dias, corpo vazio após 24 horas ou acima de 64 KB, linha `COMPLETED`. O job de limpeza fica para a S4 do roadmap.
 
