@@ -25,5 +25,7 @@ jobs:
           cache: maven
       - name: Docker obrigatório (fail-closed, Testcontainers)
         run: docker info
+      - name: API Docker para o Testcontainers 1.21
+        run: printf 'api.version=1.44\n' >> "$HOME/.docker-java.properties"
       - name: Build e testes
         run: ./mvnw -B -ntp verify
